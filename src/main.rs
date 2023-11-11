@@ -198,15 +198,15 @@ fn FieldView(
                 let plus_button = if expected_type.repeated || field.get().len() == 0 {
                     view! {
                         <div>
-                        <button
-                            on:click=move |_| {
-                                let default_value = default_value.clone();
-                                field.update(move |v| {
-                                    v.push(create_rw_signal(default_value));
-                                });
-                            } >
-                            +
-                        </button>
+                            <button
+                                on:click=move |_| {
+                                    let default_value = default_value.clone();
+                                    field.update(move |v| {
+                                        v.push(create_rw_signal(default_value));
+                                    });
+                                } >
+                                +
+                            </button>
                         </div>
                     }
                 } else {
@@ -217,28 +217,28 @@ fn FieldView(
                 view! {
                     <div>
                         { expected_type.name.clone()}:
-                                <ul>
-                                <For
-                                    each=move || field.get().clone().into_iter().enumerate()
-                                    // a unique key for each item
-                                    key=|(i,_)| *i
-                                    // renders each item to a view
-                                    children=move |(i,v)| {
-                                        view! {
-                                            <li>
-                                                <button
-                                                    on:click=move |_| {
-                                                        field.update(|v| { v.remove(i); });
-                                                    } >
-                                                    x
-                                                    </button>
-                                                <ValueView schema=schema expected_type=Type::Boolean value=v />
-                                            </li>
-                                        }
+                        <ul>
+                            <For
+                                each=move || field.get().clone().into_iter().enumerate()
+                                // a unique key for each item
+                                key=|(i,_)| *i
+                                // renders each item to a view
+                                children=move |(i,v)| {
+                                    view! {
+                                        <li>
+                                            <button
+                                                on:click=move |_| {
+                                                    field.update(|v| { v.remove(i); });
+                                                } >
+                                                x
+                                                </button>
+                                            <ValueView schema=schema expected_type=Type::Boolean value=v />
+                                        </li>
                                     }
-                                    />
-                                    { plus_button }
-                                </ul>
+                                }
+                                />
+                            { plus_button }
+                        </ul>
                     </div>
                 }
             }
