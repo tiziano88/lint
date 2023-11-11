@@ -1,9 +1,27 @@
 use leptos::*;
-use maplit::hashmap;
-use std::{collections::HashMap, hash};
+use maplit::{btreemap, hashmap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash,
+};
 
 const ESCAPE_KEY: u32 = 27;
 const ENTER_KEY: u32 = 13;
+
+#[derive(Clone, Hash, PartialEq, Eq)]
+struct Selector {
+    field_id: FieldId,
+    index: usize,
+}
+
+type Path = Vec<Selector>;
+
+fn format_path(p: &Path) -> String {
+    p.iter()
+        .map(|selector| format!("{}[{}]", selector.field_id, selector.index))
+        .collect::<Vec<_>>()
+        .join(".")
+}
 
 #[derive(Clone)]
 struct Schema {
@@ -42,7 +60,7 @@ impl Type {
 #[derive(Clone)]
 struct ObjectType {
     name: String,
-    fields: HashMap<FieldId, FieldType>,
+    fields: BTreeMap<FieldId, FieldType>,
 }
 
 #[derive(Clone)]
@@ -80,7 +98,7 @@ fn create_schema() -> Schema {
         object_types: hashmap! {
             0 => ObjectType {
                 name: "User".to_string(),
-                fields: hashmap! {
+                fields: btreemap! {
                     0 => FieldType {
                         name: "name".to_string(),
                         type_: Type::String,
@@ -105,7 +123,7 @@ fn create_schema() -> Schema {
             },
             1 => ObjectType {
                 name: "Post".to_string(),
-                fields: hashmap! {
+                fields: btreemap! {
                     0 => FieldType {
                         name: "title".to_string(),
                         type_: Type::String,
@@ -130,7 +148,7 @@ fn create_schema() -> Schema {
             },
             2 => ObjectType {
                 name: "Comment".to_string(),
-                fields: hashmap! {
+                fields: btreemap! {
                     0 => FieldType {
                         name: "content".to_string(),
                         type_: Type::String,
@@ -181,7 +199,7 @@ fn App() -> impl IntoView {
 
     view! {
         <div>
-            <ValueView schema=schema expected_type=root_type value=value />
+            <ValueView schema=schema expected_type=root_type value=value path=vec![] />
         </div>
     }
 }
@@ -191,9 +209,12 @@ fn FieldView(
     schema: ReadSignal<Schema>,
     expected_type: FieldType,
     field: FieldValue,
+    path: Path,
+    field_id: FieldId,
 ) -> impl IntoView {
     view! {
         { move || {
+                let path = path.clone();
                 let default_value = expected_type.type_.default_value().clone();
                 let plus_button = if expected_type.repeated || field.get().len() == 0 {
                     view! {
@@ -216,7 +237,7 @@ fn FieldView(
                 };
                 view! {
                     <div>
-                        { expected_type.name.clone()}:
+                        { expected_type.name.clone() } #{ field_id }:
                         <ul>
                             <For
                                 each=move || field.get().clone().into_iter().enumerate()
@@ -224,6 +245,11 @@ fn FieldView(
                                 key=|(i,_)| *i
                                 // renders each item to a view
                                 children=move |(i,v)| {
+                                    let new_path = {
+                                        let mut new_path = path.clone();
+                                        new_path.push(Selector { field_id, index: i });
+                                        new_path
+                                    };
                                     view! {
                                         <li>
                                             <button
@@ -232,7 +258,12 @@ fn FieldView(
                                                 } >
                                                 x
                                                 </button>
-                                            <ValueView schema=schema expected_type=Type::Boolean value=v />
+                                            <ValueView
+                                              schema=schema
+                                              expected_type=Type::Boolean
+                                              value=v
+                                              path=new_path
+                                              />
                                         </li>
                                     }
                                 }
@@ -252,7 +283,9 @@ fn ValueView(
     schema: ReadSignal<Schema>,
     expected_type: Type,
     value: RwSignal<Value>,
+    path: Path,
 ) -> impl IntoView {
+    let path = path.clone();
     view! {
         { move || match value.get() {
                 Value::String(string) => view! { <span>
@@ -274,6 +307,7 @@ fn ValueView(
                         return view! { <span>Unknown</span> };
                     }
                     let object_type = object_type.unwrap();
+                    let path = path.clone();
                     view! {
                         <span>
                             <ul>
@@ -284,9 +318,16 @@ fn ValueView(
                                 // renders each item to a view
                                 children=move |(field_id, field_type)| {
                                     let value = object.fields.get(&field_id).cloned().unwrap_or_default();
+                                    let path = path.clone();
                                     view! {
                                         <span>
-                                            <FieldView schema=schema expected_type=field_type.clone() field=value />
+                                            <FieldView
+                                              schema=schema
+                                              expected_type=field_type.clone()
+                                              field=value
+                                              field_id=field_id
+                                              path=path.clone()
+                                            />
                                         </span>
                                     }
                                 }
