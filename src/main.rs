@@ -89,7 +89,7 @@ struct ObjectValue {
 type FieldValue = RwSignal<Vec<RwSignal<Value>>>;
 
 fn main() {
-    mount_to_body(|| view! { <App /> })
+    mount_to_body(|| view! { <App/> })
 }
 
 fn create_schema() -> Schema {
@@ -200,13 +200,13 @@ fn App() -> impl IntoView {
 
     view! {
         <div>
-            selected: { move || format_path(&selected_path.get()) }
+            selected: {move || format_path(&selected_path.get())}
             <ValueView
-              schema=schema
-              expected_type=root_type
-              value=value
-              path=vec![]
-              selected=selected_path
+                schema=schema
+                expected_type=root_type
+                value=value
+                path=vec![]
+                selected=selected_path
             />
         </div>
     }
@@ -222,68 +222,63 @@ fn FieldView(
     selected: RwSignal<Path>,
 ) -> impl IntoView {
     view! {
-        { move || {
-                let path = path.clone();
-                let default_value = expected_type.type_.default_value().clone();
-                let plus_button = if expected_type.repeated || field.get().len() == 0 {
-                    view! {
-                        <div>
-                            <button
-                                on:click=move |_| {
-                                    let default_value = default_value.clone();
-                                    field.update(move |v| {
-                                        v.push(create_rw_signal(default_value));
-                                    });
-                                } >
-                                +
-                            </button>
-                        </div>
-                    }
-                } else {
-                    view! {
-                        <div></div>
-                    }
-                };
+        {move || {
+            let path = path.clone();
+            let default_value = expected_type.type_.default_value().clone();
+            let plus_button = if expected_type.repeated || field.get().len() == 0 {
                 view! {
                     <div>
-                        { expected_type.name.clone() } #{ field_id }:
-                        <ul>
-                            <For
-                                each=move || field.get().clone().into_iter().enumerate()
-                                // a unique key for each item
-                                key=|(i,_)| *i
-                                // renders each item to a view
-                                children=move |(i,v)| {
-                                    let new_path = {
-                                        let mut new_path = path.clone();
-                                        new_path.push(Selector { field_id, index: i });
-                                        new_path
-                                    };
-                                    view! {
-                                        <li>
-                                            <button
-                                                on:click=move |_| {
-                                                    field.update(|v| { v.remove(i); });
-                                                } >
-                                                x
-                                                </button>
-                                            <ValueView
-                                              schema=schema
-                                              expected_type=Type::Boolean
-                                              value=v
-                                              path=new_path
-                                              selected=selected.clone()
-                                              />
-                                        </li>
-                                    }
-                                }
-                                />
-                            { plus_button }
-                        </ul>
+                        <button on:click=move |_| {
+                            let default_value = default_value.clone();
+                            field
+                                .update(move |v| {
+                                    v.push(create_rw_signal(default_value));
+                                });
+                        }>+</button>
                     </div>
                 }
+            } else {
+                view! { <div></div> }
+            };
+            view! {
+                <div>
+                    {expected_type.name.clone()} # {field_id} : <ul>
+                        <For
+                            each=move || field.get().clone().into_iter().enumerate()
+                            // a unique key for each item
+                            key=|(i, _)| *i
+                            // renders each item to a view
+                            children=move |(i, v)| {
+                                let new_path = {
+                                    let mut new_path = path.clone();
+                                    new_path.push(Selector { field_id, index: i });
+                                    new_path
+                                };
+                                view! {
+                                    <li>
+                                        <button on:click=move |_| {
+                                            field
+                                                .update(|v| {
+                                                    v.remove(i);
+                                                });
+                                        }>x</button>
+                                        <ValueView
+                                            schema=schema
+                                            expected_type=Type::Boolean
+                                            value=v
+                                            path=new_path
+                                            selected=selected.clone()
+                                        />
+                                    </li>
+                                }
+                            }
+                        />
+
+                        {plus_button}
+                    </ul>
+                </div>
             }
-        }
+        }}
     }
 }
 
@@ -298,70 +293,94 @@ fn ValueView(
 ) -> impl IntoView {
     let path = path.clone();
     view! {
-            { move ||  {
-                let v = match value.get() {
-                    Value::String(string) => view! { <span>
-                    <input
-                        prop:value=string
-                        on:keyup=move |ev| {
-                            let key_code = ev.key_code();
-                            if key_code == ENTER_KEY {
-                                value.set(Value::String(event_target_value(&ev)));
-                            }
-                        } />
-                    </span> },
-                    Value::Int(int) => view! { <span>{int}</span> },
-                    Value::Number(number) => view! { <span>{number}</span> },
-                    Value::Boolean(boolean) => view! { <span>{boolean}</span> },
-                    Value::Object(object) => {
-                        let object_type = schema.get().object_types.get(&object.object_type_id).cloned();
-                        if object_type.is_none() {
-                            return view! { <span>Unknown</span> };
-                        }
-                        let object_type = object_type.unwrap();
-                        let path = path.clone();
-                        view! {
-                            <span>
-                                <ul>
+        {move || {
+            let v = match value.get() {
+                Value::String(string) => {
+                    view! {
+                        <span>
+                            <input
+                                prop:value=string
+                                on:keyup=move |ev| {
+                                    let key_code = ev.key_code();
+                                    if key_code == ENTER_KEY {
+                                        value.set(Value::String(event_target_value(&ev)));
+                                    }
+                                }
+                            />
+                        </span>
+                    }
+                }
+                Value::Int(int) => view! { <span>{int}</span> },
+                Value::Number(number) => view! { <span>{number}</span> },
+                Value::Boolean(boolean) => view! { <span>{boolean}</span> },
+                Value::Object(object) => {
+                    let object_type = schema
+                        .get()
+                        .object_types
+                        .get(&object.object_type_id)
+                        .cloned();
+                    if object_type.is_none() {
+                        return view! { <span>Unknown</span> };
+                    }
+                    let object_type = object_type.unwrap();
+                    let path = path.clone();
+                    view! {
+                        <span>
+                            <ul>
                                 <For
                                     each=move || object_type.fields.clone().into_iter()
                                     // a unique key for each item
                                     key=|(field_id, _)| *field_id
                                     // renders each item to a view
                                     children=move |(field_id, field_type)| {
-                                        let value = object.fields.get(&field_id).cloned().unwrap_or_default();
+                                        let value = object
+                                            .fields
+                                            .get(&field_id)
+                                            .cloned()
+                                            .unwrap_or_default();
                                         let path = path.clone();
                                         view! {
                                             <span>
                                                 <FieldView
-                                                  schema=schema
-                                                  expected_type=field_type.clone()
-                                                  field=value
-                                                  field_id=field_id
-                                                  path=path.clone()
-                                                  selected=selected.clone()
+                                                    schema=schema
+                                                    expected_type=field_type.clone()
+                                                    field=value
+                                                    field_id=field_id
+                                                    path=path.clone()
+                                                    selected=selected.clone()
                                                 />
                                             </span>
                                         }
                                     }
-                                    />
-                                </ul>
-                            </span>
-                        }
-                    },
-                    _ => view! { <span>Unknown</span> },
-                };
-                let path = path.clone();
-                view! {
-                    <span
-                        class=if selected.get() == path { "selected" } else { "" }
-                        on:click=move |_| {
-                            selected.set(path.clone());
-                        } >
-                        { v }
-                    </span>
+                                />
+
+                            </ul>
+                        </span>
+                    }
                 }
+                _ => {
+                    view! {
+                        // a unique key for each item
+                        // renders each item to a view
+
+                        <span>Unknown</span>
+                    }
+                }
+            };
+            let path = path.clone();
+            view! {
+                // a unique key for each item
+                // renders each item to a view
+
+                <span
+                    class=if selected.get() == path { "selected" } else { "" }
+                    on:click=move |_| {
+                        selected.set(path.clone());
+                    }
+                >
+                    {v}
+                </span>
             }
-        }
+        }}
     }
 }

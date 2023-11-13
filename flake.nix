@@ -28,6 +28,7 @@
             pkgs.protobuf
             pkgs.trunk
             pkgs.just
+            pkgs.leptosfmt
             (pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
               extensions = [
                 "clippy"
