@@ -94,9 +94,9 @@ fn main() {
 
 fn create_schema() -> Schema {
     Schema {
-        root_object_type_id: 1,
+        root_object_type_id: 2325,
         object_types: hashmap! {
-            0 => ObjectType {
+            27092 => ObjectType {
                 name: "User".to_string(),
                 fields: btreemap! {
                     0 => FieldType {
@@ -121,7 +121,7 @@ fn create_schema() -> Schema {
                     },
                 },
             },
-            1 => ObjectType {
+            2325 => ObjectType {
                 name: "Post".to_string(),
                 fields: btreemap! {
                     0 => FieldType {
@@ -136,17 +136,17 @@ fn create_schema() -> Schema {
                     },
                     2 => FieldType {
                         name: "author".to_string(),
-                        type_: Type::Object(0),
+                        type_: Type::Object(27092),
                         repeated: false,
                     },
                     3 => FieldType {
                         name: "comments".to_string(),
-                        type_: Type::Object(2),
+                        type_: Type::Object(5528),
                         repeated: true,
                     },
                 },
             },
-            2 => ObjectType {
+            5528 => ObjectType {
                 name: "Comment".to_string(),
                 fields: btreemap! {
                     0 => FieldType {
@@ -171,12 +171,12 @@ fn single_field_value(value: Value) -> FieldValue {
 
 fn create_value() -> Value {
     Value::Object(ObjectValue {
-        object_type_id: 1,
+        object_type_id: 2325,
         fields: hashmap! {
             0 => single_field_value(Value::String("Hello, world!".to_string())),
             1 => single_field_value(Value::String("This is a post.".to_string())),
             2 => single_field_value(Value::Object(ObjectValue {
-                    object_type_id: 0,
+                    object_type_id: 27092,
                     fields: hashmap! {
                         0 => single_field_value(Value::String("John Doe".to_string())),
                         1 => single_field_value(Value::Int(42)),
