@@ -55,6 +55,16 @@ impl Type {
             }),
         }
     }
+
+    fn is_primitive(&self) -> bool {
+        match self {
+            Type::String => true,
+            Type::Int => true,
+            Type::Number => true,
+            Type::Boolean => true,
+            Type::Object(_) => false,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -198,9 +208,11 @@ fn App() -> impl IntoView {
     let root_type = Type::Object(schema.get_untracked().root_object_type_id);
     let selected_path = create_rw_signal(Path::default());
 
+    let selected_element = create_memo(move |_| format_path(&selected_path.get()));
+
     view! {
         <div>
-            selected: {move || format_path(&selected_path.get())}
+            sel: { move || format_path(&selected_path.get()) }
             <ValueView
                 schema=schema
                 expected_type=root_type
@@ -208,6 +220,9 @@ fn App() -> impl IntoView {
                 path=vec![]
                 selected=selected_path
             />
+            <button on:click=move |_| {
+                selected_path.set(vec![Selector { field_id: 1, index: 0 }]);
+            }>Reset</button>
         </div>
     }
 }
@@ -294,17 +309,16 @@ fn ValueView(
     let path = path.clone();
     view! {
         {move || {
+            logging::log!("rendering {}", format_path(&path));
             let v = match value.get() {
                 Value::String(string) => {
                     view! {
                         <span>
                             <input
+                                type="text"
                                 prop:value=string
-                                on:keyup=move |ev| {
-                                    let key_code = ev.key_code();
-                                    if key_code == ENTER_KEY {
-                                        value.set(Value::String(event_target_value(&ev)));
-                                    }
+                                on:input=move |ev| {
+                                    value.set(Value::String(event_target_value(&ev)));
                                 }
                             />
                         </span>
@@ -367,14 +381,18 @@ fn ValueView(
                     }
                 }
             };
+            let path1 = path.clone();
+            let selected1 = selected.clone();
+            let s = move || selected1.with(|s| s.clone() == path1.clone());
             let path = path.clone();
             view! {
                 // a unique key for each item
                 // renders each item to a view
 
                 <span
-                    class=if selected.get() == path { "selected" } else { "" }
-                    on:click=move |_| {
+                    class:selected=s
+                    on:click=move |ev| {
+                        ev.stop_propagation();
                         selected.set(path.clone());
                     }
                 >
