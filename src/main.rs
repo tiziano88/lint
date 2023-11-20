@@ -226,6 +226,47 @@ fn create_value() -> Value {
     })
 }
 
+fn parent(schema: &Schema, root_value: &Value, path: &Path) -> Path {
+    let mut path = path.clone();
+    path.pop();
+    path
+}
+
+// Traverse the value to find the child at the given path.
+fn child(schema: &Schema, root_value: &Value, path: &Path) -> Path {
+    let mut path = path.clone();
+    let mut value = root_value.clone();
+    for selector in path.iter() {
+        match value {
+            Value::Object(object) => {
+                let field = object.fields.get(&selector.field_id).unwrap();
+                value = field.get()[selector.index].get().clone();
+            }
+            _ => {
+                logging::log!("not an object");
+                break;
+            }
+        }
+    }
+    match value {
+        Value::Object(o) => {
+            let object_type = schema.object_types.get(&o.object_type_id).unwrap();
+            for (field_id, field_type) in object_type.fields.iter() {
+                let field = o.fields.get(field_id).unwrap();
+                if field_type.type_.is_primitive() {
+                    path.push(Selector {
+                        field_id: *field_id,
+                        index: 0,
+                    });
+                    break;
+                }
+            }
+        }
+        _ => {}
+    }
+    path
+}
+
 #[component]
 fn App() -> impl IntoView {
     let (schema, set_schema) = create_signal(create_schema());
@@ -246,8 +287,11 @@ fn App() -> impl IntoView {
                 selected=selected_path
             />
             <button on:click=move |_| {
-                selected_path.set(vec![Selector { field_id : 1, index : 0 }]);
-            }>Reset</button>
+                selected_path.set(parent(&schema.get(), &value.get(), &selected_path.get()));
+            }>Parent</button>
+            <button on:click=move |_| {
+                selected_path.set(child(&schema.get(), &value.get(), &selected_path.get()));
+            }>Child</button>
         </div>
     }
 }
