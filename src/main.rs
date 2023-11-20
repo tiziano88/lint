@@ -212,7 +212,7 @@ fn App() -> impl IntoView {
 
     view! {
         <div>
-            sel: { move || format_path(&selected_path.get()) }
+            sel: {move || format_path(&selected_path.get())}
             <ValueView
                 schema=schema
                 expected_type=root_type
@@ -221,7 +221,7 @@ fn App() -> impl IntoView {
                 selected=selected_path
             />
             <button on:click=move |_| {
-                selected_path.set(vec![Selector { field_id: 1, index: 0 }]);
+                selected_path.set(vec![Selector { field_id : 1, index : 0 }]);
             }>Reset</button>
         </div>
     }
@@ -241,7 +241,7 @@ fn FieldView(
             let path = path.clone();
             let expected_type = expected_type.clone();
             let default_value = expected_type.type_.default_value().clone();
-            let plus_button = if expected_type.repeated || field.get().len() == 0 {
+            let add_button = if expected_type.repeated || field.get().len() == 0 {
                 view! {
                     <div>
                         <button on:click=move |_| {
@@ -271,12 +271,6 @@ fn FieldView(
                                     new_path
                                 };
                                 logging::log!("expected_type.type_ {:?}", expected_type.type_);
-                                let id = match expected_type.type_ {
-                                    Type::Object(id) => id,
-                                    _ => panic!("non-object type")
-                                };
-                                logging::log!("id {}", id);
-                                let type_field = schema.get().object_types[&id].fields[&field_id].clone();
                                 view! {
                                     <li>
                                         <button on:click=move |_| {
@@ -287,7 +281,7 @@ fn FieldView(
                                         }>x</button>
                                         <ValueView
                                             schema=schema
-                                            expected_type=type_field.type_
+                                            expected_type=expected_type.type_.clone()
                                             value=v
                                             path=new_path
                                             selected=selected.clone()
@@ -297,7 +291,7 @@ fn FieldView(
                             }
                         />
 
-                        {plus_button}
+                        {add_button}
                     </ul>
                 </div>
             }
@@ -324,34 +318,38 @@ fn ValueView(
     path: Path,
     selected: RwSignal<Path>,
 ) -> impl IntoView {
-    let path = path.clone();
-    view! {
+    let expected_type_1 = expected_type.clone();
+    let text_box = if expected_type.is_primitive() {
+        view! {
+            <span>
+                <input
+                    type="text"
+                    prop:value=move || { pretty_print(value.get()) }
+                    on:input=move |ev| {
+                        let v = event_target_value(&ev);
+                        logging::log!("v {:?}", v);
+                        logging::log!("expected_type {:?}", expected_type_1);
+                        match expected_type_1 {
+                            Type::String => value.set(Value::String(v)),
+                            Type::Int => {
+                                let i_parsed = v.parse::<i64>();
+                                logging::log!("i_parsed {:?}", i_parsed);
+                                value.set(Value::Int(i_parsed.unwrap_or_default()))
+                            }
+                            _ => {}
+                        };
+                    }
+                />
+
+            </span>
+        }
+    } else {
+        view! { <span></span> }
+    };
+    let path1 = path.clone();
+    let object_view = view! {
         {move || {
-            logging::log!("rendering {}", format_path(&path));
-            let expected_type = expected_type.clone();
-            let text_box = view! {
-                <span>
-                    <input
-                        type="text"
-                        prop:value=move || { pretty_print(value.get()) }
-                        on:input=move |ev| {
-                            let v = event_target_value(&ev);
-                            logging::log!("v {:?}", v);
-                            logging::log!("expected_type {:?}", expected_type);
-                            match expected_type {
-                                Type::String => value.set(Value::String(v)),
-                                Type::Int => {
-                                    let i_parsed = v.parse::<i64>();
-                                    logging::log!("i_parsed {:?}", i_parsed);
-                                    value.set(Value::Int(i_parsed.unwrap_or_default()))
-                                },
-                                _ => {},
-                            };
-                        }
-                    />
-                </span>
-            };
-            let v = match value.get() {
+            match value.get() {
                 Value::Object(object) => {
                     let object_type = schema
                         .get()
@@ -362,7 +360,7 @@ fn ValueView(
                         return view! { <span>Unknown</span> };
                     }
                     let object_type = object_type.unwrap();
-                    let path = path.clone();
+                    let path = path1.clone();
                     view! {
                         <span>
                             <ul>
@@ -397,26 +395,30 @@ fn ValueView(
                         </span>
                     }
                 }
-                _ => text_box
-            };
-            let path1 = path.clone();
-            let selected1 = selected.clone();
-            let s = move || selected1.with(|s| s.clone() == path1.clone());
-            let path = path.clone();
-            view! {
-                // a unique key for each item
-                // renders each item to a view
+                _ => {
+                    view! {
+                        // a unique key for each item
+                        // renders each item to a view
 
-                <span
-                    class:selected=s
-                    on:click=move |ev| {
-                        ev.stop_propagation();
-                        selected.set(path.clone());
+                        // a unique key for each item
+                        // renders each item to a view
+
+                        <span>"not an object"</span>
                     }
-                >
-                    {v}
-                </span>
+                }
             }
         }}
+    };
+    let path = path.clone();
+    let expected_type = expected_type.clone();
+    view! {
+        // class:selected=s
+        <span on:click=move |ev| {
+            ev.stop_propagation();
+            selected.set(path.clone());
+        }>
+
+            {text_box.clone()} {object_view}
+        </span>
     }
 }
