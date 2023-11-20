@@ -2,6 +2,7 @@ use leptos::*;
 use maplit::{btreemap, hashmap};
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::{self, Display, Formatter},
     hash,
 };
 
@@ -80,7 +81,7 @@ struct FieldType {
     repeated: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Value {
     String(String),
     Int(i64),
@@ -90,7 +91,31 @@ enum Value {
     Object(ObjectValue),
 }
 
-#[derive(Clone)]
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::String(string) => write!(f, "{}", string),
+            Value::Int(v) => write!(f, "{}", v),
+            Value::Number(v) => write!(f, "{}", v),
+            Value::Boolean(v) => write!(f, "{}", v),
+            Value::Object(v) => write!(f, "<OBJECT>"),
+        }
+    }
+}
+
+impl Value {
+    fn parse(type_: Type, s: &str) -> Option<Value> {
+        match type_ {
+            Type::String => Some(Value::String(s.to_string())),
+            Type::Int => s.parse::<i64>().map(Value::Int).ok(),
+            Type::Number => s.parse::<f64>().map(Value::Number).ok(),
+            Type::Boolean => s.parse::<bool>().map(Value::Boolean).ok(),
+            Type::Object(_) => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 struct ObjectValue {
     object_type_id: ObjectTypeId,
     fields: HashMap<FieldId, FieldValue>,
@@ -270,7 +295,6 @@ fn FieldView(
                                     new_path.push(Selector { field_id, index: i });
                                     new_path
                                 };
-                                logging::log!("expected_type.type_ {:?}", expected_type.type_);
                                 view! {
                                     <li>
                                         <button on:click=move |_| {
@@ -299,16 +323,6 @@ fn FieldView(
     }
 }
 
-fn pretty_print(value: Value) -> String {
-    match value {
-        Value::String(string) => string,
-        Value::Int(v) => v.to_string(),
-        Value::Number(v) => v.to_string(),
-        Value::Boolean(v) => v.to_string(),
-        Value::Object(v) => "invalid value".to_string(),
-    }
-}
-
 // Display a value.
 #[component]
 fn ValueView(
@@ -324,20 +338,14 @@ fn ValueView(
             <span>
                 <input
                     type="text"
-                    prop:value=move || { pretty_print(value.get()) }
+                    prop:value=move || { value.get().to_string() }
                     on:input=move |ev| {
                         let v = event_target_value(&ev);
-                        logging::log!("v {:?}", v);
-                        logging::log!("expected_type {:?}", expected_type_1);
-                        match expected_type_1 {
-                            Type::String => value.set(Value::String(v)),
-                            Type::Int => {
-                                let i_parsed = v.parse::<i64>();
-                                logging::log!("i_parsed {:?}", i_parsed);
-                                value.set(Value::Int(i_parsed.unwrap_or_default()))
-                            }
-                            _ => {}
-                        };
+                        let parsed = Value::parse(expected_type_1.clone(), &v);
+                        logging::log!("parsing {} as {:?} -> {:?}", v, expected_type_1, parsed);
+                        if let Some(parsed) = parsed {
+                            value.set(parsed);
+                        }
                     }
                 />
 
@@ -397,13 +405,7 @@ fn ValueView(
                 }
                 _ => {
                     view! {
-                        // a unique key for each item
-                        // renders each item to a view
-
-                        // a unique key for each item
-                        // renders each item to a view
-
-                        <span>"not an object"</span>
+                        <span></span>
                     }
                 }
             }
