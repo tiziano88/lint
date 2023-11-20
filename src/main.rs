@@ -267,6 +267,16 @@ fn child(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     path
 }
 
+fn prev(schema: &Schema, root_value: &Value, path: &Path) -> Path {
+    // TODO
+    return path.clone();
+}
+
+fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
+    // TODO
+    return path.clone();
+}
+
 #[component]
 fn App() -> impl IntoView {
     let (schema, set_schema) = create_signal(create_schema());
@@ -292,6 +302,12 @@ fn App() -> impl IntoView {
             <button on:click=move |_| {
                 selected_path.set(child(&schema.get(), &value.get(), &selected_path.get()));
             }>Child</button>
+            <button on:click=move |_| {
+                selected_path.set(prev(&schema.get(), &value.get(), &selected_path.get()));
+            }>Prev</button>
+            <button on:click=move |_| {
+                selected_path.set(next(&schema.get(), &value.get(), &selected_path.get()));
+            }>Next</button>
         </div>
     }
 }
