@@ -411,16 +411,19 @@ fn ValueView(
             }
         }}
     };
-    let path = path.clone();
+    let path1 = path.clone();
     let expected_type = expected_type.clone();
+    let s = create_memo(move |_| path1 == selected.get());
+    let path = path.clone();
     view! {
-        // class:selected=s
-        <span on:click=move |ev| {
+        <div
+        class:selected=s
+        on:click=move |ev| {
             ev.stop_propagation();
             selected.set(path.clone());
         }>
 
             {text_box.clone()} {object_view}
-        </span>
+        </div>
     }
 }
