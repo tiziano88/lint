@@ -318,12 +318,12 @@ fn ObjectView(
     path: Path,
     selected: RwSignal<Path>,
 ) -> impl IntoView {
-    let object = match value.get() {
+    let object = match value.get_untracked() {
         Value::Object(v) => v,
         _ => panic!("expected object value"),
     };
     let object_type = schema
-        .get()
+        .get_untracked()
         .object_types
         .get(&object.object_type_id)
         .cloned();
@@ -331,133 +331,139 @@ fn ObjectView(
         return view! { <span>Unknown</span> };
     }
     let object_type = object_type.unwrap();
+    let path1 = path.clone();
+    let path2 = path.clone();
+    let s = create_memo(move |_| path1 == selected.get());
     view! {
         <span>
-        <ul>
-            <For
-                each=move || object_type.fields.clone().into_iter()
-                // a unique key for each item
-                key=|(field_id, _)| *field_id
-                // renders each item to a view
-                children=move |(field_id, field_type)| {
-                    let value = object
-                        .fields
-                        .get(&field_id)
-                        .cloned()
-                        .unwrap_or_default();
-                    let more_than_one_field_value = value.get().len() > 1;
-                    let path = path.clone();
+            <div
+            class:selected=s
+            on:click=move |ev| {
+                ev.stop_propagation();
+                selected.set(path.clone());
+            }>
+                <ul>
+                    <For
+                        each=move || object_type.fields.clone().into_iter()
+                        // a unique key for each item
+                        key=|(field_id, _)| *field_id
+                        // renders each item to a view
+                        children=move |(field_id, field_type)| {
+                            let value = object
+                                .fields
+                                .get(&field_id)
+                                .cloned()
+                                .unwrap_or_default();
+                            let more_than_one_field_value = value.get().len() > 1;
+                            let path2 = path2.clone();
 
+                            // let expected_type = expected_type.clone();
+                            let default_value = field_type.type_.default_value().clone();
+                            let add_button = if field_type.repeated || value.get().len() == 0 {
+                                view! {
+                                    <div>
+                                        <button on:click=move |_| {
+                                            let default_value = default_value.clone();
+                                            value
+                                                .update(move |v| {
+                                                    v.push(create_rw_signal(default_value));
+                                                });
+                                        }>+</button>
+                                    </div>
+                                }
+                            } else {
+                                view! { <div></div> }
+                            };
+                            let field_type = field_type.clone();
+                            let field_type2 = field_type.clone();
 
-                    // let expected_type = expected_type.clone();
-                    let default_value = field_type.type_.default_value().clone();
-                    let add_button = if field_type.repeated || value.get().len() == 0 {
-                        view! {
-                            <div>
-                                <button on:click=move |_| {
-                                    let default_value = default_value.clone();
-                                    value
-                                        .update(move |v| {
-                                            v.push(create_rw_signal(default_value));
-                                        });
-                                }>+</button>
-                            </div>
+                            let all_field_values = view! {
+                                <For
+                                    each=move || value.get().clone().into_iter().enumerate()
+                                    // a unique key for each item
+                                    key=|(i, _)| *i
+                                    // renders each item to a view
+                                    children=move |(i, v)| {
+                                        let new_path = {
+                                            let mut new_path = path2.clone();
+                                            new_path.push(Selector { field_id, index: i });
+                                            new_path
+                                        };
+
+                                        let view = match field_type2.type_ {
+                                            Type::Object(_) => view! {
+                                                <span>
+                                                    <ObjectView
+                                                        schema=schema
+                                                        value=v
+                                                        path=new_path
+                                                        selected=selected
+                                                    />
+                                                </span>
+                                            },
+                                            _ => view! {
+                                                <span>
+                                                    <ValueView
+                                                        expected_type=field_type2.clone()
+                                                        value=v
+                                                        path=new_path
+                                                        selected=selected
+                                                    />
+                                                </span>
+                                            },
+                                        };
+
+                                        if more_than_one_field_value {
+                                            view! {
+                                                <span>
+                                                    <li>
+                                                        <button on:click=move |_| {
+                                                            value
+                                                                .update(|v| {
+                                                                    v.remove(i);
+                                                                });
+                                                        }>x</button>
+                                                        {view}
+                                                    </li>
+                                                </span>
+                                            }
+                                        } else {
+                                            view! {
+                                                <span>{view}</span>
+                                            }
+                                        }
+                                    }
+                                />
+                            };
+                            let field_type2 = field_type.clone();
+                            view! {
+                                <li>
+                                    {
+                                        if more_than_one_field_value {
+                                            view! {
+                                                <span>
+                                                    {field_type2.clone().name} :
+                                                    <ol>
+                                                        {all_field_values}
+                                                    </ol>
+                                                </span>
+                                            }
+                                        } else {
+                                            view! {
+                                                <span>
+                                                    {field_type2.clone().name} : {all_field_values}
+                                                </span>
+                                            }
+                                        }
+                                    }
+                                    { add_button }
+                                </li>
+                            }
                         }
-                    } else {
-                        view! { <div></div> }
-                    };
-
-                    let all_field_values = view! {
-                        <For
-                            each=move || value.get().clone().into_iter().enumerate()
-                            // a unique key for each item
-                            key=|(i, _)| *i
-                            // renders each item to a view
-                            children=move |(i, v)| {
-                                let new_path = {
-                                    let mut new_path = path.clone();
-                                    new_path.push(Selector { field_id, index: i });
-                                    new_path
-                                };
-                                let field_type = field_type.clone();
-                                let field_type2 = field_type.clone();
-
-
-                                let x_button = view! {
-                                    <button on:click=move |_| {
-                                        value
-                                            .update(|v| {
-                                                v.remove(i);
-                                            });
-                                    }>x</button>
-                                };
-
-                                // let count_msg = " #".to_owned() + &i.to_string();
-                                // let field_name_with_count = field_type.clone().name + if field_type.repeated { &count_msg } else { "" } + ": ";
-
-                                let view = match field_type.type_ {
-                                    Type::Object(_) => view! {
-                                        <span>
-                                            {field_type.clone().name} :
-                                            { x_button }
-                                            <ObjectView
-                                                schema=schema
-                                                value=v
-                                                path=new_path
-                                                selected=selected
-                                            />
-                                        </span>
-                                    },
-                                    _ => view! {
-                                        <span>
-                                            {field_type.clone().name} :
-                                            { x_button }
-                                            <ValueView
-                                                expected_type=field_type2
-                                                value=v
-                                                path=new_path
-                                                selected=selected
-                                            />
-                                        </span>
-                                    },
-                                };
-
-                                if more_than_one_field_value {
-                                    view! {
-                                        <span><li>{view}</li></span>
-                                    }
-                                } else {
-                                    view! {
-                                        <span>{view}</span>
-                                    }
-                                }
-                            }
-                        />
-                    };
-                    view! {
-                        <li>
-                            {
-                                if more_than_one_field_value {
-                                    view! {
-                                        <span>
-                                            <ol>
-                                                {all_field_values}
-                                            </ol>
-                                        </span>
-                                    }
-                                } else {
-                                    view! {
-                                        <span>{all_field_values}</span>
-                                    }
-                                }
-                            }
-                            { add_button }
-                        </li>
-                    }
-                }
-            />
-        </ul>
-    </span>
+                    />
+                </ul>
+            </div>
+        </span>
     }
 }
 
