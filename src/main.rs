@@ -392,13 +392,13 @@ fn ObjectView(
                                     }>x</button>
                                 };
 
-                                let count_msg = " #".to_owned() + &i.to_string();
-                                let field_name_with_count = field_type.clone().name + if field_type.repeated { &count_msg } else { "" } + ": ";
+                                // let count_msg = " #".to_owned() + &i.to_string();
+                                // let field_name_with_count = field_type.clone().name + if field_type.repeated { &count_msg } else { "" } + ": ";
 
                                 let view = match field_type.type_ {
                                     Type::Object(_) => view! {
                                         <span>
-                                            {field_name_with_count}
+                                            {field_type.clone().name} :
                                             { x_button }
                                             <ObjectView
                                                 schema=schema
@@ -410,7 +410,7 @@ fn ObjectView(
                                     },
                                     _ => view! {
                                         <span>
-                                            {field_name_with_count}
+                                            {field_type.clone().name} :
                                             { x_button }
                                             <ValueView
                                                 expected_type=field_type2
@@ -440,9 +440,9 @@ fn ObjectView(
                                 if more_than_one_field_value {
                                     view! {
                                         <span>
-                                            <ul>
+                                            <ol>
                                                 {all_field_values}
-                                            </ul>
+                                            </ol>
                                         </span>
                                     }
                                 } else {
