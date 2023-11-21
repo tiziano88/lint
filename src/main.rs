@@ -277,6 +277,17 @@ fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     return path.clone();
 }
 
+fn ancestor_with_next_child(schema: &Schema, root_value: &Value, path: &Path, current_child: &Path) -> Option<Path> {
+    // TODO
+    return None;
+}
+
+fn next_leaf(schema: &Schema, root_value: &Value, path: &Path, current_child: &Path) -> Option<Path> {
+
+    // TODO
+    return None;
+}
+
 #[component]
 fn App() -> impl IntoView {
     let (schema, set_schema) = create_signal(create_schema());
