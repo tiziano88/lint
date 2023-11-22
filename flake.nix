@@ -29,6 +29,7 @@
             pkgs.trunk
             pkgs.just
             pkgs.leptosfmt
+            pkgs.tailwindcss
             (pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
               extensions = [
                 "clippy"
