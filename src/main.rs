@@ -265,6 +265,7 @@ fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
         Value::Object(_) => Some(path.clone()),
         _ => ancestor_with_next_child(schema, root_value, path),
     };
+    logging::log!("starting_ancestor {:?}", starting_ancestor);
     match starting_ancestor {
         Some(ancestor) => 
             first_leaf(schema, root_value, &ancestor).get_or_insert(path.clone()).to_vec(),
@@ -368,16 +369,16 @@ fn App() -> impl IntoView {
         <div>
             sel: {move || format_path(&selected_path.get())}
             <ObjectView schema=schema value=value path=vec![] selected=selected_path/>
-            <button on:click=move |_| {
+            <button class="button" on:click=move |_| {
                 selected_path.set(parent(&schema.get(), &value.get(), &selected_path.get()));
             }>Parent</button>
-            <button on:click=move |_| {
+            <button class="button" on:click=move |_| {
                 selected_path.set(child(&schema.get(), &value.get(), &selected_path.get()));
             }>Child</button>
-            <button on:click=move |_| {
+            <button class="button" on:click=move |_| {
                 selected_path.set(prev(&schema.get(), &value.get(), &selected_path.get()));
             }>Prev</button>
-            <button on:click=move |_| {
+            <button class="button" on:click=move |_| {
                 selected_path.set(next(&schema.get(), &value.get(), &selected_path.get()));
             }>Next</button>
         </div>
