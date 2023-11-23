@@ -9,7 +9,7 @@ use std::{
 const ESCAPE_KEY: u32 = 27;
 const ENTER_KEY: u32 = 13;
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 struct Selector {
     field_id: FieldId,
     index: usize,
@@ -273,28 +273,88 @@ fn prev(schema: &Schema, root_value: &Value, path: &Path) -> Path {
 }
 
 fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
-    // TODO
-    return path.clone();
+    // TODO: if a non-leaf is selected, we should just go immediately to first_leaf.
+    match ancestor_with_next_child(schema, root_value, path) {
+        Some(ancestor_with_next_child) => {
+            match first_leaf(schema, root_value, &ancestor_with_next_child) {
+                Some(next_leaf) => next_leaf,
+                None => path.clone(),
+            }
+        },
+        None => path.clone(),
+    }
 }
 
-fn ancestor_with_next_child(
-    schema: &Schema,
-    root_value: &Value,
-    path: &Path,
-    current_child: &Path,
-) -> Option<Path> {
-    // TODO
-    return None;
+fn ancestor_with_next_child(schema: &Schema, root_value: &Value, path: &Path) -> Option<Path> {
+    let parent_path = parent(schema, root_value, path);
+    let mut parent_value = root_value.clone();
+    for selector in parent_path.iter() {
+        match parent_value {
+            Value::Object(object) => {
+                let field = object.fields.get(&selector.field_id).unwrap();
+                parent_value = field.get()[selector.index].get().clone();
+            }
+            _ => panic!("not an object"),
+        }
+    }
+    match parent_value {
+        Value::Object(parent_object) => {
+            let mut parent_type_fields = schema.object_types[&parent_object.object_type_id].fields.clone();
+            let current_path_field_id = match path.last() {
+                Some(selector) => selector.field_id,
+                None => panic!("no values"),
+            };
+            // TODO: this skips over later values for this same repeated field. need to not do that.
+            let subsequent_parent_type_fields = parent_type_fields.split_off(&current_path_field_id);
+            let mut iter = subsequent_parent_type_fields.iter();
+            iter.next();
+            for (field_id, field_type) in iter {
+                if parent_object.fields.contains_key(field_id) {
+                    let mut next_leaf_path = parent_path.clone();
+                    next_leaf_path.push(Selector {
+                        field_id: *field_id,
+                        index: 0,
+                    });
+                    return Some(next_leaf_path);
+                }
+            }
+        }
+        _ => panic!("not an object"),
+    }
+    if parent_path.len() == 0 {
+        return None;
+    }
+    return ancestor_with_next_child(schema, root_value, &parent_path);
 }
 
-fn next_leaf(
-    schema: &Schema,
-    root_value: &Value,
-    path: &Path,
-    current_child: &Path,
-) -> Option<Path> {
-    // TODO
-    return None;
+fn first_leaf(schema: &Schema, root_value: &Value, path: &Path) -> Option<Path> {
+    let mut value = root_value.clone();
+    for selector in path.iter() {
+        match value {
+            Value::Object(object) => {
+                let field = object.fields.get(&selector.field_id).unwrap();
+                value = field.get()[selector.index].get().clone();
+            }
+            _ => panic!("not an object"),
+        }
+    }
+    let mut first_leaf_path = path.clone();
+    match value {
+        Value::Object(object_value) => {
+            let mut type_fields = schema.object_types[&object_value.object_type_id].fields.clone();
+            match type_fields.first_key_value() {
+                Some((field_id, field_type)) => {
+                    first_leaf_path.push(Selector {
+                        field_id: *field_id,
+                        index: 0,
+                    });
+                    first_leaf(schema, root_value, &first_leaf_path)
+                },
+                None => panic!("no values"),
+            }
+        },
+        _ => Some(first_leaf_path),
+    }
 }
 
 #[component]
