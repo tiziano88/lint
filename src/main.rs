@@ -234,20 +234,8 @@ fn parent(schema: &Schema, root_value: &Value, path: &Path) -> Path {
 
 // Traverse the value to find the child at the given path.
 fn child(schema: &Schema, root_value: &Value, path: &Path) -> Path {
+    let value = find_value(root_value, path).unwrap();
     let mut path = path.clone();
-    let mut value = root_value.clone();
-    for selector in path.iter() {
-        match value {
-            Value::Object(object) => {
-                let field = object.fields.get(&selector.field_id).unwrap();
-                value = field.get()[selector.index].get().clone();
-            }
-            _ => {
-                logging::log!("not an object");
-                break;
-            }
-        }
-    }
     match value {
         Value::Object(o) => {
             let object_type = schema.object_types.get(&o.object_type_id).unwrap();
@@ -276,6 +264,7 @@ fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     // TODO: if a non-leaf is selected, we should just go immediately to first_leaf.
     match ancestor_with_next_child(schema, root_value, path) {
         Some(ancestor_with_next_child) => {
+            logging::log!("ancestor_with_next_child: {:?}", ancestor_with_next_child);
             match first_leaf(schema, root_value, &ancestor_with_next_child) {
                 Some(next_leaf) => next_leaf,
                 None => path.clone(),
@@ -287,16 +276,7 @@ fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
 
 fn ancestor_with_next_child(schema: &Schema, root_value: &Value, path: &Path) -> Option<Path> {
     let parent_path = parent(schema, root_value, path);
-    let mut parent_value = root_value.clone();
-    for selector in parent_path.iter() {
-        match parent_value {
-            Value::Object(object) => {
-                let field = object.fields.get(&selector.field_id).unwrap();
-                parent_value = field.get()[selector.index].get().clone();
-            }
-            _ => panic!("not an object"),
-        }
-    }
+    let parent_value = find_value(root_value, &parent_path).unwrap();
     match parent_value {
         Value::Object(parent_object) => {
             let mut parent_type_fields = schema.object_types[&parent_object.object_type_id].fields.clone();
@@ -339,16 +319,7 @@ fn ancestor_with_next_child(schema: &Schema, root_value: &Value, path: &Path) ->
 }
 
 fn first_leaf(schema: &Schema, root_value: &Value, path: &Path) -> Option<Path> {
-    let mut value = root_value.clone();
-    for selector in path.iter() {
-        match value {
-            Value::Object(object) => {
-                let field = object.fields.get(&selector.field_id).unwrap();
-                value = field.get()[selector.index].get().clone();
-            }
-            _ => panic!("not an object"),
-        }
-    }
+    let value = find_value(root_value, path).unwrap();
     let mut first_leaf_path = path.clone();
     match value {
         Value::Object(object_value) => {
@@ -366,6 +337,24 @@ fn first_leaf(schema: &Schema, root_value: &Value, path: &Path) -> Option<Path> 
         },
         _ => Some(first_leaf_path),
     }
+}
+
+fn find_value(root_value: &Value, path: &Path) -> Option<Value> {
+    let mut value = root_value.clone();
+    for selector in path.iter() {
+        match value {
+            Value::Object(object) => {
+                match object.fields.get(&selector.field_id) {
+                    Some(field_value) => {
+                        value = field_value.get()[selector.index].get();
+                    },
+                    None => return None
+                }
+            }
+            _ => return None,
+        }
+    }
+    Some(value)
 }
 
 #[component]
