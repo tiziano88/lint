@@ -304,10 +304,21 @@ fn ancestor_with_next_child(schema: &Schema, root_value: &Value, path: &Path) ->
                 Some(selector) => selector.field_id,
                 None => panic!("no values"),
             };
-            // TODO: this skips over later values for this same repeated field. need to not do that.
             let subsequent_parent_type_fields = parent_type_fields.split_off(&current_path_field_id);
             let mut iter = subsequent_parent_type_fields.iter();
-            iter.next();
+            let (current_field_id, current_field_type) = iter.next().unwrap();
+            if current_field_type.repeated {
+                let field_entries_size = parent_object.fields[current_field_id].get().len();
+                let current_field_index = path.last().unwrap().index;
+                if current_field_index < field_entries_size - 1 {
+                    let mut next_leaf_path = parent_path.clone();
+                    next_leaf_path.push(Selector {
+                        field_id: *current_field_id,
+                        index: current_field_index+1,
+                    });
+                    return Some(next_leaf_path);
+                }
+            }
             for (field_id, field_type) in iter {
                 if parent_object.fields.contains_key(field_id) {
                     let mut next_leaf_path = parent_path.clone();
