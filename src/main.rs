@@ -261,15 +261,13 @@ fn prev(schema: &Schema, root_value: &Value, path: &Path) -> Path {
 }
 
 fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
-    // TODO: if a non-leaf is selected, we should just go immediately to first_leaf.
-    match ancestor_with_next_child(schema, root_value, path) {
-        Some(ancestor_with_next_child) => {
-            logging::log!("ancestor_with_next_child: {:?}", ancestor_with_next_child);
-            match first_leaf(schema, root_value, &ancestor_with_next_child) {
-                Some(next_leaf) => next_leaf,
-                None => path.clone(),
-            }
-        },
+    let starting_ancestor = match find_value(root_value, path).unwrap() {
+        Value::Object(_) => Some(path.clone()),
+        _ => ancestor_with_next_child(schema, root_value, path),
+    };
+    match starting_ancestor {
+        Some(ancestor) => 
+            first_leaf(schema, root_value, &ancestor).get_or_insert(path.clone()).to_vec(),
         None => path.clone(),
     }
 }
