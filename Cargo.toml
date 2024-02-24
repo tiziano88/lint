@@ -5,4 +5,7 @@ edition = "2021"
 
 [dependencies]
 leptos = { version = "0.5.2", features = ["csr", "nightly"] }
-maplit = "1.0.2"
+leptos-use = { version = "*", features = ["serde"] } 
+maplit = "*"
+serde = { version = "*", features = ["derive"] }
+web-sys = { version = "*", features = ["Storage"] }

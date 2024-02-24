@@ -1,5 +1,7 @@
 use leptos::*;
+use leptos_use::utils::JsonCodec;
 use maplit::{btreemap, hashmap};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{self, Display, Formatter},
@@ -30,6 +32,7 @@ struct Schema {
     object_types: HashMap<ObjectTypeId, ObjectType>,
 }
 
+type ID = u32;
 type ObjectTypeId = u32;
 type FieldId = u32;
 
@@ -41,6 +44,12 @@ enum Type {
     Boolean,
     // Array(Box<Type>),
     Object(ObjectTypeId),
+}
+
+#[derive(Serialize, Deserialize, Clone, Default, PartialEq)]
+struct Node {
+    id: ID,
+    value: Value,
 }
 
 impl Type {
@@ -81,8 +90,10 @@ struct FieldType {
     repeated: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
 enum Value {
+    #[default]
+    Empty,
     String(String),
     Int(i64),
     Number(f64),
@@ -94,6 +105,7 @@ enum Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Value::Empty => write!(f, "<EMPTY>"),
             Value::String(string) => write!(f, "{}", string),
             Value::Int(v) => write!(f, "{}", v),
             Value::Number(v) => write!(f, "{}", v),
@@ -115,7 +127,7 @@ impl Value {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 struct ObjectValue {
     object_type_id: ObjectTypeId,
     fields: HashMap<FieldId, FieldValue>,
@@ -267,8 +279,9 @@ fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     };
     logging::log!("starting_ancestor {:?}", starting_ancestor);
     match starting_ancestor {
-        Some(ancestor) => 
-            first_leaf(schema, root_value, &ancestor).get_or_insert(path.clone()).to_vec(),
+        Some(ancestor) => first_leaf(schema, root_value, &ancestor)
+            .get_or_insert(path.clone())
+            .to_vec(),
         None => path.clone(),
     }
 }
@@ -278,12 +291,15 @@ fn ancestor_with_next_child(schema: &Schema, root_value: &Value, path: &Path) ->
     let parent_value = find_value(root_value, &parent_path).unwrap();
     match parent_value {
         Value::Object(parent_object) => {
-            let mut parent_type_fields = schema.object_types[&parent_object.object_type_id].fields.clone();
+            let mut parent_type_fields = schema.object_types[&parent_object.object_type_id]
+                .fields
+                .clone();
             let current_path_field_id = match path.last() {
                 Some(selector) => selector.field_id,
                 None => panic!("no values"),
             };
-            let subsequent_parent_type_fields = parent_type_fields.split_off(&current_path_field_id);
+            let subsequent_parent_type_fields =
+                parent_type_fields.split_off(&current_path_field_id);
             let mut iter = subsequent_parent_type_fields.iter();
             let (current_field_id, current_field_type) = iter.next().unwrap();
             if current_field_type.repeated {
@@ -293,7 +309,7 @@ fn ancestor_with_next_child(schema: &Schema, root_value: &Value, path: &Path) ->
                     let mut next_leaf_path = parent_path.clone();
                     next_leaf_path.push(Selector {
                         field_id: *current_field_id,
-                        index: current_field_index+1,
+                        index: current_field_index + 1,
                     });
                     return Some(next_leaf_path);
                 }
@@ -322,7 +338,9 @@ fn first_leaf(schema: &Schema, root_value: &Value, path: &Path) -> Option<Path> 
     let mut first_leaf_path = path.clone();
     match value {
         Value::Object(object_value) => {
-            let mut type_fields = schema.object_types[&object_value.object_type_id].fields.clone();
+            let mut type_fields = schema.object_types[&object_value.object_type_id]
+                .fields
+                .clone();
             match type_fields.first_key_value() {
                 Some((field_id, field_type)) => {
                     first_leaf_path.push(Selector {
@@ -330,10 +348,10 @@ fn first_leaf(schema: &Schema, root_value: &Value, path: &Path) -> Option<Path> 
                         index: 0,
                     });
                     first_leaf(schema, root_value, &first_leaf_path)
-                },
+                }
                 None => panic!("no values"),
             }
-        },
+        }
         _ => Some(first_leaf_path),
     }
 }
@@ -342,14 +360,12 @@ fn find_value(root_value: &Value, path: &Path) -> Option<Value> {
     let mut value = root_value.clone();
     for selector in path.iter() {
         match value {
-            Value::Object(object) => {
-                match object.fields.get(&selector.field_id) {
-                    Some(field_value) => {
-                        value = field_value.get()[selector.index].get();
-                    },
-                    None => return None
+            Value::Object(object) => match object.fields.get(&selector.field_id) {
+                Some(field_value) => {
+                    value = field_value.get()[selector.index].get();
                 }
-            }
+                None => return None,
+            },
             _ => return None,
         }
     }
@@ -362,6 +378,12 @@ fn App() -> impl IntoView {
     let value = create_rw_signal(create_value());
     let root_type = Type::Object(schema.get_untracked().root_object_type_id);
     let selected_path = create_rw_signal(Path::default());
+
+    // let storage = window().local_storage().unwrap().unwrap();
+    // storage.set_item("c", "v").unwrap();
+    // logging::log!("storage {}", storage.get_item("c").unwrap().unwrap());
+    // let (storage, set_storage, _) =
+    //     leptos_use::storage::use_local_storage::<Node, JsonCodec>("test");
 
     let selected_element = create_memo(move |_| format_path(&selected_path.get()));
 
