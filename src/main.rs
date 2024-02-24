@@ -2,6 +2,7 @@ use leptos::*;
 use leptos_use::utils::JsonCodec;
 use maplit::{btreemap, hashmap};
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{self, Display, Formatter},
@@ -13,7 +14,7 @@ const ENTER_KEY: u32 = 13;
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 struct Selector {
-    field_id: FieldId,
+    field_id: ID,
     index: usize,
 }
 
@@ -28,13 +29,15 @@ fn format_path(p: &Path) -> String {
 
 #[derive(Clone)]
 struct Schema {
-    root_object_type_id: ObjectTypeId,
-    object_types: HashMap<ObjectTypeId, ObjectType>,
+    root_object_type_id: ID,
+    object_types: HashMap<ID, ObjectType>,
 }
 
 type ID = u32;
-type ObjectTypeId = u32;
-type FieldId = u32;
+
+fn new_id() -> ID {
+    rand::random()
+}
 
 #[derive(Clone, Debug)]
 enum Type {
@@ -43,10 +46,10 @@ enum Type {
     Number,
     Boolean,
     // Array(Box<Type>),
-    Object(ObjectTypeId),
+    Object(ID),
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Default, PartialEq, Debug)]
 struct Node {
     id: ID,
     value: Value,
@@ -80,7 +83,7 @@ impl Type {
 #[derive(Clone)]
 struct ObjectType {
     name: String,
-    fields: BTreeMap<FieldId, FieldType>,
+    fields: BTreeMap<ID, FieldType>,
 }
 
 #[derive(Clone)]
@@ -129,8 +132,8 @@ impl Value {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 struct ObjectValue {
-    object_type_id: ObjectTypeId,
-    fields: HashMap<FieldId, FieldValue>,
+    object_type_id: ID,
+    fields: HashMap<ID, FieldValue>,
 }
 
 type FieldValue = RwSignal<Vec<RwSignal<Value>>>;
@@ -372,6 +375,31 @@ fn find_value(root_value: &Value, path: &Path) -> Option<Value> {
     Some(value)
 }
 
+struct D {
+    sha2_256: [u8; 32],
+}
+
+fn get_node(digest: &D) -> Node {
+    let (storage, set_storage, _) = leptos_use::storage::use_local_storage::<Node, JsonCodec>(
+        format!("sha2-256:{}", &hex::encode(digest.sha2_256)),
+    );
+    storage.get()
+}
+
+fn put_node(node: &Node) {
+    // first convert node to JSON and calculate digest
+    let json = serde_json::to_string(node).unwrap();
+    let sha2_256 = sha2::Sha256::digest(json.as_bytes());
+    let digest = D {
+        sha2_256: sha2_256.into(),
+    };
+    // then store the JSON in local storage
+    let (storage, set_storage, _) = leptos_use::storage::use_local_storage::<Node, JsonCodec>(
+        format!("sha2-256:{}", &hex::encode(digest.sha2_256)),
+    );
+    set_storage(node.clone());
+}
+
 #[component]
 fn App() -> impl IntoView {
     let (schema, set_schema) = create_signal(create_schema());
@@ -382,8 +410,11 @@ fn App() -> impl IntoView {
     // let storage = window().local_storage().unwrap().unwrap();
     // storage.set_item("c", "v").unwrap();
     // logging::log!("storage {}", storage.get_item("c").unwrap().unwrap());
-    // let (storage, set_storage, _) =
-    //     leptos_use::storage::use_local_storage::<Node, JsonCodec>("test");
+    put_node(&Node {
+        id: 1,
+        value: value.get_untracked(),
+    });
+    logging::log!("node {:?}", get_node(&D { sha2_256: [0; 32] }));
 
     let selected_element = create_memo(move |_| format_path(&selected_path.get()));
 

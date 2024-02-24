@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-leptos = { version = "0.5.2", features = ["csr", "nightly"] }
+hex = "*"
+leptos = { version = "0.6", features = ["csr", "nightly"] }
 leptos-use = { version = "*", features = ["serde"] } 
 maplit = "*"
+rand = "*"
 serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+sha2 = "*"
 web-sys = { version = "*", features = ["Storage"] }
