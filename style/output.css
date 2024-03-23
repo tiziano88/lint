@@ -595,6 +595,8 @@ video {
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
+/* @import "https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css"; */
+
 .button {
   border-radius: 0.25rem;
   --tw-bg-opacity: 1;
