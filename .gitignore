@@ -1,3 +1,4 @@
 /.direnv
 /dist
 /target
+/bazel-vscode-target
