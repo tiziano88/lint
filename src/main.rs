@@ -375,29 +375,71 @@ fn find_value(root_value: &Value, path: &Path) -> Option<Value> {
     Some(value)
 }
 
+trait HasDigest {
+    type Digest;
+    fn digest(&self) -> Self::Digest;
+}
+
+trait Store<T, D>
+where
+    T: HasDigest<Digest = D>,
+{
+    fn get(&self, digest: &D) -> Option<&T>;
+    fn has(&self, digest: &D) -> bool;
+    fn put(&mut self, value: T);
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct D {
     sha2_256: [u8; 32],
 }
 
-fn get_node(digest: &D) -> Node {
-    let (storage, set_storage, _) = leptos_use::storage::use_local_storage::<Node, JsonCodec>(
-        format!("sha2-256:{}", &hex::encode(digest.sha2_256)),
-    );
-    storage.get()
+struct LocalStorage<T, D>
+where
+    T: HasDigest<Digest = D>,
+{
+    storage: HashMap<D, T>,
 }
 
-fn put_node(node: &Node) {
-    // first convert node to JSON and calculate digest
-    let json = serde_json::to_string(node).unwrap();
-    let sha2_256 = sha2::Sha256::digest(json.as_bytes());
-    let digest = D {
-        sha2_256: sha2_256.into(),
-    };
-    // then store the JSON in local storage
-    let (storage, set_storage, _) = leptos_use::storage::use_local_storage::<Node, JsonCodec>(
-        format!("sha2-256:{}", &hex::encode(digest.sha2_256)),
-    );
-    set_storage(node.clone());
+impl<T, D> LocalStorage<T, D>
+where
+    T: HasDigest<Digest = D>,
+{
+    fn new() -> Self {
+        LocalStorage {
+            storage: hashmap! {},
+        }
+    }
+}
+
+impl<T, D> Store<T, D> for LocalStorage<T, D>
+where
+    T: HasDigest<Digest = D>,
+    D: Eq + hash::Hash,
+{
+    fn get(&self, digest: &D) -> Option<&T> {
+        self.storage.get(digest)
+    }
+
+    fn has(&self, digest: &D) -> bool {
+        self.storage.contains_key(digest)
+    }
+
+    fn put(&mut self, value: T) {
+        let digest = value.digest();
+        self.storage.insert(digest, value);
+    }
+}
+
+impl HasDigest for Node {
+    type Digest = D;
+    fn digest(&self) -> D {
+        let json = serde_json::to_string(self).unwrap();
+        let sha2_256 = sha2::Sha256::digest(json.as_bytes());
+        D {
+            sha2_256: sha2_256.into(),
+        }
+    }
 }
 
 #[component]
@@ -407,14 +449,16 @@ fn App() -> impl IntoView {
     let root_type = Type::Object(schema.get_untracked().root_object_type_id);
     let selected_path = create_rw_signal(Path::default());
 
+    let mut store = LocalStorage::<Node, D>::new();
+
     // let storage = window().local_storage().unwrap().unwrap();
     // storage.set_item("c", "v").unwrap();
     // logging::log!("storage {}", storage.get_item("c").unwrap().unwrap());
-    put_node(&Node {
+    store.put(Node {
         id: 1,
         value: value.get_untracked(),
     });
-    logging::log!("node {:?}", get_node(&D { sha2_256: [0; 32] }));
+    logging::log!("node {:?}", store.get(&D { sha2_256: [0; 32] }));
 
     let selected_element = create_memo(move |_| format_path(&selected_path.get()));
 
