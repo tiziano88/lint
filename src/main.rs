@@ -386,7 +386,7 @@ where
 {
     fn get(&self, digest: &D) -> Option<&T>;
     fn has(&self, digest: &D) -> bool;
-    fn put(&mut self, value: T);
+    fn put(&mut self, value: T) -> D;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -415,7 +415,7 @@ where
 impl<T, D> Store<T, D> for LocalStorage<T, D>
 where
     T: HasDigest<Digest = D>,
-    D: Eq + hash::Hash,
+    D: Eq + hash::Hash + Clone,
 {
     fn get(&self, digest: &D) -> Option<&T> {
         self.storage.get(digest)
@@ -425,9 +425,10 @@ where
         self.storage.contains_key(digest)
     }
 
-    fn put(&mut self, value: T) {
+    fn put(&mut self, value: T) -> D {
         let digest = value.digest();
-        self.storage.insert(digest, value);
+        self.storage.insert(digest.clone(), value);
+        digest
     }
 }
 
@@ -454,11 +455,11 @@ fn App() -> impl IntoView {
     // let storage = window().local_storage().unwrap().unwrap();
     // storage.set_item("c", "v").unwrap();
     // logging::log!("storage {}", storage.get_item("c").unwrap().unwrap());
-    store.put(Node {
+    let d = store.put(Node {
         id: 1,
         value: value.get_untracked(),
     });
-    logging::log!("node {:?}", store.get(&D { sha2_256: [0; 32] }));
+    logging::log!("node {:?}", store.get(&d));
 
     let selected_element = create_memo(move |_| format_path(&selected_path.get()));
 
