@@ -9,6 +9,10 @@ use std::{
     hash,
 };
 
+mod storage;
+
+use storage::*;
+
 const ESCAPE_KEY: u32 = 27;
 const ENTER_KEY: u32 = 13;
 
@@ -146,6 +150,154 @@ fn create_schema() -> Schema {
     Schema {
         root_object_type_id: 2325,
         object_types: hashmap! {
+            // https://doc.rust-lang.org/cargo/reference/manifest.html
+            893728943 => ObjectType {
+                name: "CargoManifest".to_string(),
+                fields: btreemap! {
+                    0 => FieldType {
+                        name: "package".to_string(),
+                        type_: Type::Object(87839159),
+                        repeated: false,
+                    },
+                    1 => FieldType {
+                        name: "dependencies".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    2 => FieldType {
+                        name: "dev-dependencies".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    3 => FieldType {
+                        name: "build-dependencies".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    4 => FieldType {
+                        name: "features".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    5 => FieldType {
+                        name: "target".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    6 => FieldType {
+                        name: "workspace".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: false,
+                    },
+                    7 => FieldType {
+                        name: "profile".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    8 => FieldType {
+                        name: "patch".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    9 => FieldType {
+                        name: "replace".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    10 => FieldType {
+                        name: "workspace-members".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    11 => FieldType {
+                        name: "default-members".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    12 => FieldType {
+                        name: "exclude".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    13 => FieldType {
+                        name: "include".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: true,
+                    },
+                    14 => FieldType {
+                        name: "metadata".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: false,
+                    },
+                },
+            },
+            // package
+            87839159 => ObjectType {
+                name: "Package".to_string(),
+                fields: btreemap! {
+                    0 => FieldType {
+                        name: "name".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    1 => FieldType {
+                        name: "version".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    2 => FieldType {
+                        name: "authors".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    3 => FieldType {
+                        name: "edition".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    4 => FieldType {
+                        name: "build".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    5 => FieldType {
+                        name: "links".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    6 => FieldType {
+                        name: "exclude".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    7 => FieldType {
+                        name: "include".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    8 => FieldType {
+                        name: "publish".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    9 => FieldType {
+                        name: "workspace".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    10 => FieldType {
+                        name: "edition".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    11 => FieldType {
+                        name: "metadata".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                },
+            },
+
             27092 => ObjectType {
                 name: "User".to_string(),
                 fields: btreemap! {
@@ -193,6 +345,11 @@ fn create_schema() -> Schema {
                         name: "comments".to_string(),
                         type_: Type::Object(5528),
                         repeated: true,
+                    },
+                    4 => FieldType {
+                        name: "cargo".to_string(),
+                        type_: Type::Object(893728943),
+                        repeated: false,
                     },
                 },
             },
@@ -380,56 +537,9 @@ trait HasDigest {
     fn digest(&self) -> Self::Digest;
 }
 
-trait Store<T, D>
-where
-    T: HasDigest<Digest = D>,
-{
-    fn get(&self, digest: &D) -> Option<&T>;
-    fn has(&self, digest: &D) -> bool;
-    fn put(&mut self, value: T) -> D;
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct D {
     sha2_256: [u8; 32],
-}
-
-struct LocalStorage<T, D>
-where
-    T: HasDigest<Digest = D>,
-{
-    storage: HashMap<D, T>,
-}
-
-impl<T, D> LocalStorage<T, D>
-where
-    T: HasDigest<Digest = D>,
-{
-    fn new() -> Self {
-        LocalStorage {
-            storage: hashmap! {},
-        }
-    }
-}
-
-impl<T, D> Store<T, D> for LocalStorage<T, D>
-where
-    T: HasDigest<Digest = D>,
-    D: Eq + hash::Hash + Clone,
-{
-    fn get(&self, digest: &D) -> Option<&T> {
-        self.storage.get(digest)
-    }
-
-    fn has(&self, digest: &D) -> bool {
-        self.storage.contains_key(digest)
-    }
-
-    fn put(&mut self, value: T) -> D {
-        let digest = value.digest();
-        self.storage.insert(digest.clone(), value);
-        digest
-    }
 }
 
 impl HasDigest for Node {
