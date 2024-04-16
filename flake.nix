@@ -27,7 +27,7 @@
         devShell =
           pkgs.mkShell {
             buildInputs = [
-              pkgs.cargo
+              # pkgs.cargo
               pkgs.protobuf
               pkgs.trunk
               pkgs.just

@@ -7,6 +7,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     fmt::{self, Display, Formatter},
     hash,
+    sync::Arc,
 };
 
 mod storage;
@@ -538,7 +539,7 @@ trait HasDigest {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct D {
+pub struct D {
     sha2_256: [u8; 32],
 }
 
@@ -560,16 +561,16 @@ fn App() -> impl IntoView {
     let root_type = Type::Object(schema.get_untracked().root_object_type_id);
     let selected_path = create_rw_signal(Path::default());
 
-    let mut store = LocalStorage::<Node, D>::new();
+    let mut store = Arc::new(LocalStorage::<Node, D>::new());
 
     // let storage = window().local_storage().unwrap().unwrap();
     // storage.set_item("c", "v").unwrap();
     // logging::log!("storage {}", storage.get_item("c").unwrap().unwrap());
-    let d = store.put(Node {
-        id: 1,
-        value: value.get_untracked(),
-    });
-    logging::log!("node {:?}", store.get(&d));
+    // let d = store.put(Node {
+    //     id: 1,
+    //     value: value.get_untracked(),
+    // });
+    // logging::log!("node {:?}", store.get(&d));
 
     let selected_element = create_memo(move |_| format_path(&selected_path.get()));
 

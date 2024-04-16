@@ -1,8 +1,13 @@
 use std::{collections::HashMap, hash};
 
+use leptos::{Signal, SignalWith};
+use leptos_use::{
+    storage::use_local_storage,
+    utils::{FromToStringCodec, JsonCodec, StringCodec},
+};
 use maplit::hashmap;
 
-use crate::HasDigest;
+use crate::{HasDigest, Node, D};
 
 pub trait Store<T, D>
 where
@@ -47,6 +52,21 @@ where
     fn put(&mut self, value: T) -> D {
         let digest = value.digest();
         self.storage.insert(digest.clone(), value);
+        let (state, set_state, _) = use_local_storage::<String, FromToStringCodec>("cc");
+        set_state("xxx".to_string());
         digest
     }
 }
+
+// fn get_item(digest: &D) -> Signal<Option<Node>> {
+//     let (item, _set_item, _) = use_local_storage::<String, FromToStringCodec>("cc");
+//     move || {
+//         let item = item();
+//         if let Some(item) = item {
+//             let node: Node = serde_json::from_str(&item).unwrap();
+//             Some(node)
+//         } else {
+//             None
+//         }
+//     }
+// }
