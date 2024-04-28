@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash};
 
-use leptos::{Signal, SignalWith};
+use leptos::{Signal, SignalGetUntracked, SignalWith};
 use leptos_use::{
     storage::use_local_storage,
     utils::{FromToStringCodec, JsonCodec, StringCodec},
@@ -58,15 +58,23 @@ where
     }
 }
 
-// fn get_item(digest: &D) -> Signal<Option<Node>> {
-//     let (item, _set_item, _) = use_local_storage::<String, FromToStringCodec>("cc");
-//     move || {
-//         let item = item();
-//         if let Some(item) = item {
-//             let node: Node = serde_json::from_str(&item).unwrap();
-//             Some(node)
-//         } else {
-//             None
-//         }
-//     }
-// }
+pub fn get_item(digest: &D) -> Signal<Option<Node>> {
+    let (item, _set_item, _) = use_local_storage::<String, FromToStringCodec>(digest.to_string());
+    Signal::derive(move || {
+        let item = item();
+        Node::deserialize(&item)
+    })
+}
+
+pub fn get_item_untracked(digest: &D) -> Option<Node> {
+    let (item, _set_item, _) = use_local_storage::<String, FromToStringCodec>(digest.to_string());
+    Node::deserialize(&item.get_untracked())
+}
+
+pub fn set_item(node: &Node) -> D {
+    let digest = node.digest();
+    let (_item, set_item, _) = use_local_storage::<String, FromToStringCodec>(digest.to_string());
+    let serialized_node = node.serialize();
+    set_item(serialized_node);
+    digest
+}
