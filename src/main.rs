@@ -125,7 +125,7 @@ impl Display for Value {
             Value::Int(v) => write!(f, "{}", v),
             Value::Number(v) => write!(f, "{}", v),
             Value::Boolean(v) => write!(f, "{}", v),
-            Value::Object(v) => write!(f, "<OBJECT>"),
+            Value::Object(_v) => write!(f, "<OBJECT>"),
         }
     }
 }
@@ -146,6 +146,13 @@ impl Value {
 struct ObjectValue {
     object_type_id: ID,
     fields: BTreeMap<ID, Vec<D>>,
+}
+
+impl ObjectValue {
+    fn append(&mut self, field_id: ID, value: D) {
+        let field = self.fields.entry(field_id).or_default();
+        field.push(value);
+    }
 }
 
 type FieldValue = RwSignal<Vec<RwSignal<Value>>>;
@@ -395,6 +402,7 @@ fn create_value() -> Value {
     })
 }
 
+#[allow(unused)]
 fn parent(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     let mut path = path.clone();
     path.pop();
@@ -402,6 +410,7 @@ fn parent(schema: &Schema, root_value: &Value, path: &Path) -> Path {
 }
 
 // Traverse the value to find the child at the given path.
+#[allow(unused)]
 fn child(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     todo!()
     // let value = find_value(root_value, path).unwrap();
@@ -425,11 +434,13 @@ fn child(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     // path
 }
 
+#[allow(unused)]
 fn prev(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     // TODO
     return path.clone();
 }
 
+#[allow(unused)]
 fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     todo!()
     // let starting_ancestor = match find_value(root_value, path).unwrap() {
@@ -445,6 +456,7 @@ fn next(schema: &Schema, root_value: &Value, path: &Path) -> Path {
     // }
 }
 
+#[allow(unused)]
 fn ancestor_with_next_child(schema: &Schema, root_value: &Value, path: &Path) -> Option<Path> {
     todo!()
     // let parent_path = parent(schema, root_value, path);
@@ -499,11 +511,11 @@ fn first_leaf(schema: &Schema, root_digest: &D, path: &Path) -> Option<Path> {
     let mut first_leaf_path = path.clone();
     match value {
         Value::Object(object_value) => {
-            let mut type_fields = schema.object_types[&object_value.object_type_id]
+            let type_fields = schema.object_types[&object_value.object_type_id]
                 .fields
                 .clone();
             match type_fields.first_key_value() {
-                Some((field_id, field_type)) => {
+                Some((field_id, _field_type)) => {
                     first_leaf_path.push(Selector {
                         field_id: *field_id,
                         index: 0,
@@ -541,7 +553,7 @@ trait HasDigest {
     fn digest(&self) -> Self::Digest;
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub struct D {
     sha2_256: [u8; 32],
 }
@@ -549,6 +561,10 @@ pub struct D {
 impl D {
     pub fn to_string(&self) -> String {
         format!("sha2-256:{}", hex::encode(self.sha2_256))
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sha2_256.iter().all(|&b| b == 0)
     }
 }
 
@@ -655,9 +671,63 @@ fn ObjectView(
     let path2 = path.clone();
     let s = create_memo(move |_| path1 == selected.get());
     fn change_value() {}
-    fn view_object(v: &ObjectValue) -> HtmlElement<html::Div> {
+    fn view_object(
+        id: &ID,
+        v: &ObjectValue,
+        schema: &Schema,
+        on_update: Callback<D>,
+    ) -> HtmlElement<html::Div> {
+        let object_type = schema.object_types.get(&v.object_type_id).unwrap().clone();
+        let v = v.clone();
+        let v1 = v.clone();
+        let v2 = v.clone();
+        let id = id.clone();
         view! {
             <div>
+                <For
+                    each=move || object_type.fields.clone().into_iter()
+                    // a unique key for each item
+                    key=|(field_id, _)| *field_id
+                    // renders each item to a view
+                    children=move |(field_id, field_type)| {
+                        let v1 = v.clone();
+                        let v2 = v2.clone();
+                        let fields = v.fields.clone();
+                        let fields1 = v.fields.clone();
+                        view!{
+                            <div>
+                                { field_type.name } "(#" { field_id } ")"
+                            </div>
+                            <div>
+                                <For
+                                    each=move || fields.clone().get(&field_id).cloned().unwrap_or_default().clone()
+                                    key=|d| d.clone()
+                                    children= move |d| {
+                                        view!{
+                                            <div>
+                                                "digest: " { format!("{:?}", d.sha2_256) }
+                                            </div>
+                                        }
+                                    }>
+                                </For>
+                                <button
+                                    class="button"
+                                    on:click=move |_| {
+                                        let mut v = v2.clone();
+                                        v.append(field_id, D{sha2_256: [0; 32]});
+                                        let d = set_item(&Node{
+                                            id: id,
+                                            value: Value::Object(v),
+                                        });
+                                        on_update(d)
+                                    }
+                                >
+                                    +
+                                </button>
+                            </div>
+                        }
+                    }>
+                </For>
               obj
             </div>
         }
@@ -673,12 +743,12 @@ fn ObjectView(
                     on:input=move |ev| {
                         let new_value = event_target_value(&ev);
                         logging::log!("new_value {}", new_value);
-                        let mut node = Node {
+                        let node = Node {
                             id: 1,
                             value: Value::String(new_value),
                         };
                         let d = set_item(&node);
-                        on_update.call(d)
+                        on_update(d)
                         // let parsed = Value::parse(expected_type.type_.clone(), &v);
                         // logging::log!("parsing {} as {:?} -> {:?}", v, expected_type.type_, parsed);
                         // if let Some(parsed) = parsed {
@@ -718,7 +788,7 @@ fn ObjectView(
             >
             {
                 move || match value.get() {
-                    Value::Object(value) => view_object(&value),
+                    Value::Object(value) => view_object(&node.get().unwrap().id, &value, &schema.get(), on_update),
                     Value::String(value) => view_string(&value, on_update),
                     _ => view! { <div>"other"</div> },
                 }

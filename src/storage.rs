@@ -52,7 +52,7 @@ where
     fn put(&mut self, value: T) -> D {
         let digest = value.digest();
         self.storage.insert(digest.clone(), value);
-        let (state, set_state, _) = use_local_storage::<String, FromToStringCodec>("cc");
+        let (_state, set_state, _) = use_local_storage::<String, FromToStringCodec>("cc");
         set_state("xxx".to_string());
         digest
     }
