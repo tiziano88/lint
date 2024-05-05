@@ -5,6 +5,7 @@ use sha2::Digest;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{self, Display, Formatter},
+    path,
     sync::Arc,
 };
 
@@ -152,6 +153,13 @@ impl ObjectValue {
     fn append(&mut self, field_id: ID, value: D) {
         let field = self.fields.entry(field_id).or_default();
         field.push(value);
+    }
+    fn set(&mut self, field_id: ID, index: usize, value: D) {
+        let field = self.fields.entry(field_id).or_default();
+        field.get_mut(index).map(|v| *v = value);
+    }
+    fn get(&mut self, field_id: ID, index: usize) -> Option<&D> {
+        self.fields.get(&field_id).and_then(|v| v.get(index))
     }
 }
 
@@ -579,6 +587,7 @@ impl HasDigest for Node {
     }
 }
 
+#[derive(Clone, Debug)]
 enum Action {
     Noop,
     Update(Path, Value),
@@ -589,17 +598,39 @@ struct State {
     history: Vec<D>,
 }
 
+fn update_node(base: &D, path: &Path, value: Value) -> D {
+    logging::log!("update_node {:?} -> {:?}", path, value);
+    if path.is_empty() {
+        let mut node = get_item(base).get_untracked().unwrap();
+        node.value = value;
+        set_item(&node)
+    } else {
+        let mut node = get_item(base).get_untracked().unwrap();
+        logging::log!("node {:?}", node);
+        let mut object = match node.value {
+            Value::Object(v) => v,
+            _ => panic!("expected object value"),
+        };
+        logging::log!("object {:?}", object);
+        let selector = path.first().unwrap();
+        logging::log!("selector {:?}", selector);
+        let child = object.get(selector.field_id, selector.index).unwrap();
+        let new_next_digest = update_node(child, &path[1..].to_vec(), value);
+        object.set(selector.field_id, selector.index, new_next_digest);
+        node.value = Value::Object(object);
+        set_item(&node)
+    }
+}
+
 #[component]
 fn App() -> impl IntoView {
-    let (schema, set_schema) = create_signal(create_schema());
+    let (schema, _set_schema) = create_signal(create_schema());
     let value = create_rw_signal(create_value());
-    let root_type = Type::Object(schema.get_untracked().root_object_type_id);
+    let _root_type = Type::Object(schema.get_untracked().root_object_type_id);
 
     let selected_path = create_rw_signal(Path::default());
 
-    let (history, set_history) = create_signal(Vec::<D>::new());
-
-    let action = create_signal(Action::Noop);
+    let (history, _set_history) = create_signal(Vec::<D>::new());
 
     let mut store = Arc::new(LocalStorage::<Node, D>::new());
 
@@ -625,6 +656,17 @@ fn App() -> impl IntoView {
 
     let (root_digest, set_root_digest) = create_signal(d);
 
+    let on_action = move |action| {
+        logging::log!("action {:?}", action);
+        match action {
+            Action::Noop => {}
+            Action::Update(path, value) => {
+                let new_d = update_node(&root_digest(), &path, value);
+                set_root_digest(new_d);
+            }
+        }
+    };
+
     view! {
         <div>
             <div>
@@ -640,6 +682,7 @@ fn App() -> impl IntoView {
               digest=root_digest
               path=vec![]
               selected=selected_path
+              on_action=on_action
               on_update={move |digest| {set_root_digest(digest)} }/>
             <button class="button" on:click=move |_| {
                 selected_path.set(parent(&schema.get(), &value.get(), &selected_path.get()));
@@ -662,6 +705,7 @@ fn ObjectView(
     schema: ReadSignal<Schema>,
     digest: ReadSignal<D>,
     #[prop(into)] on_update: Callback<D>,
+    #[prop(into)] on_action: Callback<Action>,
     path: Path,
     selected: RwSignal<Path>,
 ) -> impl IntoView {
@@ -669,18 +713,23 @@ fn ObjectView(
     let value = Signal::derive(move || node.get().unwrap().value.clone());
     let path1 = path.clone();
     let path2 = path.clone();
+    let path3 = path.clone();
+    let path4 = path.clone();
     let s = create_memo(move |_| path1 == selected.get());
     fn change_value() {}
-    fn view_object(
-        id: &ID,
-        v: &ObjectValue,
-        schema: &Schema,
-        on_update: Callback<D>,
-    ) -> HtmlElement<html::Div> {
-        let object_type = schema.object_types.get(&v.object_type_id).unwrap().clone();
+    let view_object = move |id: &ID, v: &ObjectValue| -> HtmlElement<html::Div> {
+        let object_type = schema
+            .get()
+            .object_types
+            .get(&v.object_type_id)
+            .unwrap()
+            .clone();
         let v = v.clone();
         let v1 = v.clone();
         let v2 = v.clone();
+        let v3 = v.clone();
+        let path4 = path4.clone();
+        let on_update = on_update.clone();
         let id = id.clone();
         view! {
             <div>
@@ -692,20 +741,56 @@ fn ObjectView(
                     children=move |(field_id, field_type)| {
                         let v1 = v.clone();
                         let v2 = v2.clone();
+                        let v3 = v3.clone();
+                        let on_update1 = on_update.clone();
                         let fields = v.fields.clone();
                         let fields1 = v.fields.clone();
+                        let field_type = field_type.clone();
+                        let field_type1 = field_type.clone();
+                        let path4 = path4.clone();
+                        let it: Vec<(usize, D)> = fields.get(&field_id).cloned().unwrap_or_default().into_iter().enumerate().collect();
                         view!{
                             <div>
                                 { field_type.name } "(#" { field_id } ")"
                             </div>
                             <div>
                                 <For
-                                    each=move || fields.clone().get(&field_id).cloned().unwrap_or_default().clone()
-                                    key=|d| d.clone()
-                                    children= move |d| {
+                                    each=move || it.clone()
+                                    key=|(_, d)| d.clone()
+                                    children= move |(index, d)| {
+                                        let (read_d, set_d) = create_signal(d.clone());
+                                        let field_type = field_type1.clone();
+                                        let on_update1 = on_update1.clone();
+                                        let v3 = v3.clone();
+                                        let new_path = {
+                                            let mut new_path = path4.clone();
+                                            let mut new_path = vec![];
+                                            new_path.push(Selector { field_id, index });
+                                            new_path
+                                        };
                                         view!{
-                                            <div>
+                                            <div class="m-10">
                                                 "digest: " { format!("{:?}", d.sha2_256) }
+                                                <ObjectView
+                                                    schema=schema
+                                                    digest=read_d
+                                                    path=new_path
+                                                    selected=selected
+                                                    on_action=on_action.clone()
+                                                    on_update=move |digest| {
+                                                        let mut v = v3.clone();
+                                                        let new_value = field_type.type_.default_value();
+                                                        let new_value_d = set_item(&Node{
+                                                            id: new_id(),
+                                                            value: new_value,
+                                                        });
+                                                        v.set(field_id, index, new_value_d);
+                                                        let d = set_item(&Node{
+                                                            id: id,
+                                                            value: Value::Object(v),
+                                                        });
+                                                        // on_update1(d)
+                                                    } />
                                             </div>
                                         }
                                     }>
@@ -714,7 +799,12 @@ fn ObjectView(
                                     class="button"
                                     on:click=move |_| {
                                         let mut v = v2.clone();
-                                        v.append(field_id, D{sha2_256: [0; 32]});
+                                        let new_value = field_type.type_.default_value();
+                                        let new_value_d = set_item(&Node{
+                                            id: new_id(),
+                                            value: new_value,
+                                        });
+                                        v.append(field_id, new_value_d);
                                         let d = set_item(&Node{
                                             id: id,
                                             value: Value::Object(v),
@@ -731,9 +821,10 @@ fn ObjectView(
               obj
             </div>
         }
-    }
-    fn view_string(v: &str, on_update: Callback<D>) -> HtmlElement<html::Div> {
+    };
+    let view_string = move |v: &str, on_update: Callback<D>| -> HtmlElement<html::Div> {
         let vv = v.to_string();
+        let path3 = path3.clone();
         view! {
             <div>
                 <input
@@ -742,13 +833,14 @@ fn ObjectView(
                     prop:value=move || { vv.clone() }
                     on:input=move |ev| {
                         let new_value = event_target_value(&ev);
-                        logging::log!("new_value {}", new_value);
-                        let node = Node {
-                            id: 1,
-                            value: Value::String(new_value),
-                        };
-                        let d = set_item(&node);
-                        on_update(d)
+                        // logging::log!("new_value {}", new_value);
+                        // let node = Node {
+                        //     id: 1,
+                        //     value: Value::String(new_value),
+                        // };
+                        // let d = set_item(&node);
+                        // on_update(d)
+                        on_action(Action::Update(path3.clone(), Value::String(new_value)));
                         // let parsed = Value::parse(expected_type.type_.clone(), &v);
                         // logging::log!("parsing {} as {:?} -> {:?}", v, expected_type.type_, parsed);
                         // if let Some(parsed) = parsed {
@@ -758,7 +850,7 @@ fn ObjectView(
                 />
             </div>
         }
-    }
+    };
     view! {
         <div>
             <button
@@ -767,7 +859,7 @@ fn ObjectView(
                     let mut node = node.clone().get().unwrap().clone();
                     node.value = Value::String("string".to_string());
                     let d = set_item(&node);
-                    on_update.call(d)
+                    on_update(d)
                 }
             >
                 -> string
@@ -788,7 +880,7 @@ fn ObjectView(
             >
             {
                 move || match value.get() {
-                    Value::Object(value) => view_object(&node.get().unwrap().id, &value, &schema.get(), on_update),
+                    Value::Object(value) => view_object(&node.get().unwrap().id, &value),
                     Value::String(value) => view_string(&value, on_update),
                     _ => view! { <div>"other"</div> },
                 }
