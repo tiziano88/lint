@@ -343,7 +343,7 @@ pub struct D {
 }
 
 impl D {
-    pub fn to_string(&self) -> String {
+    pub fn to_hex(&self) -> String {
         format!("sha2-256:{}", hex::encode(self.sha2_256))
     }
 
@@ -364,9 +364,24 @@ impl HasDigest for Node {
 }
 
 #[derive(Clone, Debug)]
+enum Position {
+    First,
+    Last,
+    Before(usize),
+    After(usize),
+}
+
+#[derive(Clone, Debug)]
 enum Action {
     Noop,
     Update(Path, Value),
+    // Path of the parent, ID of the field.
+    Append {
+        path: Path,
+        field_id: ID,
+        position: Position,
+        value: Value,
+    },
 }
 
 #[derive(Default)]
@@ -375,10 +390,14 @@ struct State {
 }
 
 fn update_node(base: &D, path: &Path, value: Value) -> D {
-    logging::log!("update_node {:?} -> {:?}", path, value);
+    update_node_value(base, path, |_| value)
+}
+
+fn update_node_value<F: FnOnce(Value) -> Value>(base: &D, path: &Path, update_fn: F) -> D {
+    logging::log!("update_node {:?} -> (fn)", path);
     if path.is_empty() {
         let mut node = get_item(base).get_untracked().unwrap();
-        node.value = value;
+        node.value = update_fn(node.value);
         set_item(&node)
     } else {
         let mut node = get_item(base).get_untracked().unwrap();
@@ -391,7 +410,7 @@ fn update_node(base: &D, path: &Path, value: Value) -> D {
         let selector = path.first().unwrap();
         logging::log!("selector {:?}", selector);
         let child = object.get(selector.field_id, selector.index).unwrap();
-        let new_next_digest = update_node(child, &path[1..].to_vec(), value);
+        let new_next_digest = update_node_value(child, &path[1..].to_vec(), update_fn);
         object.set(selector.field_id, selector.index, new_next_digest);
         node.value = Value::Object(object);
         set_item(&node)
@@ -440,6 +459,32 @@ fn App() -> impl IntoView {
                 let new_d = update_node(&root_digest(), &path, value);
                 set_root_digest(new_d);
             }
+            Action::Append {
+                path,
+                field_id,
+                position,
+                value,
+            } => {
+                // TODO: handle position
+                match position {
+                    Position::Last => {}
+                    _ => {}
+                };
+                let new_d = update_node_value(&root_digest(), &path, |v| match v {
+                    Value::Object(mut object) => {
+                        object.append(
+                            field_id,
+                            set_item(&Node {
+                                id: new_id(),
+                                value,
+                            }),
+                        );
+                        Value::Object(object)
+                    }
+                    _ => panic!("expected object value"),
+                });
+                set_root_digest(new_d);
+            }
         }
     };
 
@@ -449,7 +494,7 @@ fn App() -> impl IntoView {
                 sel: {move || format_path(&selected_path.get())}
             </div>
             <div>
-                root_digest: {move || format!("{:?}", root_digest.get())}
+                root_digest: {move || root_digest.get().to_hex()}
             </div>
             <div>
                 hist: {move || format!("{:?}", history.get())}
@@ -521,6 +566,7 @@ fn ObjectView(
                         let field_type = field_type.clone();
                         let field_type1 = field_type.clone();
                         let path4 = path4.clone();
+                        let path5 = path4.clone();
                         let it: Vec<(usize, D)> = fields.get(&field_id).cloned().unwrap_or_default().into_iter().enumerate().collect();
                         view!{
                             <div>
@@ -542,7 +588,7 @@ fn ObjectView(
                                         };
                                         view!{
                                             <div class="m-10">
-                                                "digest: " { format!("{:?}", d.sha2_256) }
+                                                "digest: " { d.to_hex() }
                                                 <ObjectView
                                                     schema=schema
                                                     digest=read_d
@@ -557,18 +603,23 @@ fn ObjectView(
                                 <button
                                     class="button"
                                     on:click=move |_| {
-                                        let mut v = v2.clone();
+                                        // let mut v = v2.clone();
                                         let new_value = field_type.type_.default_value();
-                                        let new_value_d = set_item(&Node{
-                                            id: new_id(),
+                                        // let new_value_d = set_item(&Node{
+                                        //     id: new_id(),
+                                        //     value: new_value,
+                                        // });
+                                        // v.append(field_id, new_value_d);
+                                        // let d = set_item(&Node{
+                                        //     id: id,
+                                        //     value: Value::Object(v),
+                                        // });
+                                        on_action(Action::Append {
+                                            path: path5.clone(),
+                                            field_id: field_id.clone(),
+                                            position: Position::Last,
                                             value: new_value,
-                                        });
-                                        v.append(field_id, new_value_d);
-                                        let d = set_item(&Node{
-                                            id: id,
-                                            value: Value::Object(v),
-                                        });
-                                        // on_action(d)
+                                        })
                                     }
                                 >
                                     +
@@ -624,7 +675,7 @@ fn ObjectView(
                 -> string
             </button>
             <div>
-                digest: {move || format!("{:?}", digest.get()) }
+                digest: {move || digest.get().to_hex() }
             </div>
             <div>
                 value: {move || format!("{:?}", node.get().unwrap().value) }

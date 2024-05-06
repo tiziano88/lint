@@ -59,7 +59,7 @@ where
 }
 
 pub fn get_item(digest: &D) -> Signal<Option<Node>> {
-    let (item, _set_item, _) = use_local_storage::<String, FromToStringCodec>(digest.to_string());
+    let (item, _set_item, _) = use_local_storage::<String, FromToStringCodec>(digest.to_hex());
     Signal::derive(move || {
         let item = item();
         Node::deserialize(&item)
@@ -67,13 +67,13 @@ pub fn get_item(digest: &D) -> Signal<Option<Node>> {
 }
 
 pub fn get_item_untracked(digest: &D) -> Option<Node> {
-    let (item, _set_item, _) = use_local_storage::<String, FromToStringCodec>(digest.to_string());
+    let (item, _set_item, _) = use_local_storage::<String, FromToStringCodec>(digest.to_hex());
     Node::deserialize(&item.get_untracked())
 }
 
 pub fn set_item(node: &Node) -> D {
     let digest = node.digest();
-    let (_item, set_item, _) = use_local_storage::<String, FromToStringCodec>(digest.to_string());
+    let (_item, set_item, _) = use_local_storage::<String, FromToStringCodec>(digest.to_hex());
     let serialized_node = node.serialize();
     set_item(serialized_node);
     digest
