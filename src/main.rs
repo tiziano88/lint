@@ -9,8 +9,10 @@ use std::{
     sync::Arc,
 };
 
+mod schema;
 mod storage;
 
+use schema::*;
 use storage::*;
 
 const ESCAPE_KEY: u32 = 27;
@@ -167,232 +169,6 @@ type FieldValue = RwSignal<Vec<RwSignal<Value>>>;
 
 fn main() {
     mount_to_body(|| view! { <App/> })
-}
-
-fn create_schema() -> Schema {
-    Schema {
-        root_object_type_id: 2325,
-        object_types: hashmap! {
-            // https://doc.rust-lang.org/cargo/reference/manifest.html
-            893728943 => ObjectType {
-                name: "CargoManifest".to_string(),
-                fields: btreemap! {
-                    0 => FieldType {
-                        name: "package".to_string(),
-                        type_: Type::Object(87839159),
-                        repeated: false,
-                    },
-                    1 => FieldType {
-                        name: "dependencies".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    2 => FieldType {
-                        name: "dev-dependencies".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    3 => FieldType {
-                        name: "build-dependencies".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    4 => FieldType {
-                        name: "features".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    5 => FieldType {
-                        name: "target".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    6 => FieldType {
-                        name: "workspace".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: false,
-                    },
-                    7 => FieldType {
-                        name: "profile".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    8 => FieldType {
-                        name: "patch".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    9 => FieldType {
-                        name: "replace".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    10 => FieldType {
-                        name: "workspace-members".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    11 => FieldType {
-                        name: "default-members".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    12 => FieldType {
-                        name: "exclude".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    13 => FieldType {
-                        name: "include".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: true,
-                    },
-                    14 => FieldType {
-                        name: "metadata".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: false,
-                    },
-                },
-            },
-            // package
-            87839159 => ObjectType {
-                name: "Package".to_string(),
-                fields: btreemap! {
-                    0 => FieldType {
-                        name: "name".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    1 => FieldType {
-                        name: "version".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    2 => FieldType {
-                        name: "authors".to_string(),
-                        type_: Type::String,
-                        repeated: true,
-                    },
-                    3 => FieldType {
-                        name: "edition".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    4 => FieldType {
-                        name: "build".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    5 => FieldType {
-                        name: "links".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    6 => FieldType {
-                        name: "exclude".to_string(),
-                        type_: Type::String,
-                        repeated: true,
-                    },
-                    7 => FieldType {
-                        name: "include".to_string(),
-                        type_: Type::String,
-                        repeated: true,
-                    },
-                    8 => FieldType {
-                        name: "publish".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    9 => FieldType {
-                        name: "workspace".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    10 => FieldType {
-                        name: "edition".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    11 => FieldType {
-                        name: "metadata".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                },
-            },
-
-            27092 => ObjectType {
-                name: "User".to_string(),
-                fields: btreemap! {
-                    0 => FieldType {
-                        name: "name".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    1 => FieldType {
-                        name: "age".to_string(),
-                        type_: Type::Int,
-                        repeated: false,
-                    },
-                    2 => FieldType {
-                        name: "is_admin".to_string(),
-                        type_: Type::Boolean,
-                        repeated: false,
-                    },
-                    3 => FieldType {
-                        name: "friends".to_string(),
-                        type_: Type::String,
-                        repeated: true,
-                    },
-                },
-            },
-            2325 => ObjectType {
-                name: "Post".to_string(),
-                fields: btreemap! {
-                    0 => FieldType {
-                        name: "title".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    1 => FieldType {
-                        name: "content".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    2 => FieldType {
-                        name: "author".to_string(),
-                        type_: Type::Object(27092),
-                        repeated: true,
-                    },
-                    3 => FieldType {
-                        name: "comments".to_string(),
-                        type_: Type::Object(5528),
-                        repeated: true,
-                    },
-                    4 => FieldType {
-                        name: "cargo".to_string(),
-                        type_: Type::Object(893728943),
-                        repeated: false,
-                    },
-                },
-            },
-            5528 => ObjectType {
-                name: "Comment".to_string(),
-                fields: btreemap! {
-                    0 => FieldType {
-                        name: "content".to_string(),
-                        type_: Type::String,
-                        repeated: false,
-                    },
-                    1 => FieldType {
-                        name: "things".to_string(),
-                        type_: Type::Int,
-                        repeated: false,
-                    },
-                },
-            },
-        },
-    }
 }
 
 fn single_field_value(value: Value) -> FieldValue {
@@ -683,7 +459,7 @@ fn App() -> impl IntoView {
               path=vec![]
               selected=selected_path
               on_action=on_action
-              on_update={move |digest| {set_root_digest(digest)} }/>
+              />
             <button class="button" on:click=move |_| {
                 selected_path.set(parent(&schema.get(), &value.get(), &selected_path.get()));
             }>Parent</button>
@@ -704,7 +480,6 @@ fn App() -> impl IntoView {
 fn ObjectView(
     schema: ReadSignal<Schema>,
     digest: ReadSignal<D>,
-    #[prop(into)] on_update: Callback<D>,
     #[prop(into)] on_action: Callback<Action>,
     path: Path,
     selected: RwSignal<Path>,
@@ -729,7 +504,6 @@ fn ObjectView(
         let v2 = v.clone();
         let v3 = v.clone();
         let path4 = path4.clone();
-        let on_update = on_update.clone();
         let id = id.clone();
         view! {
             <div>
@@ -742,7 +516,6 @@ fn ObjectView(
                         let v1 = v.clone();
                         let v2 = v2.clone();
                         let v3 = v3.clone();
-                        let on_update1 = on_update.clone();
                         let fields = v.fields.clone();
                         let fields1 = v.fields.clone();
                         let field_type = field_type.clone();
@@ -760,7 +533,6 @@ fn ObjectView(
                                     children= move |(index, d)| {
                                         let (read_d, set_d) = create_signal(d.clone());
                                         let field_type = field_type1.clone();
-                                        let on_update1 = on_update1.clone();
                                         let v3 = v3.clone();
                                         let new_path = {
                                             let mut new_path = path4.clone();
@@ -777,20 +549,7 @@ fn ObjectView(
                                                     path=new_path
                                                     selected=selected
                                                     on_action=on_action.clone()
-                                                    on_update=move |digest| {
-                                                        let mut v = v3.clone();
-                                                        let new_value = field_type.type_.default_value();
-                                                        let new_value_d = set_item(&Node{
-                                                            id: new_id(),
-                                                            value: new_value,
-                                                        });
-                                                        v.set(field_id, index, new_value_d);
-                                                        let d = set_item(&Node{
-                                                            id: id,
-                                                            value: Value::Object(v),
-                                                        });
-                                                        // on_update1(d)
-                                                    } />
+                                                    />
                                             </div>
                                         }
                                     }>
@@ -809,7 +568,7 @@ fn ObjectView(
                                             id: id,
                                             value: Value::Object(v),
                                         });
-                                        on_update(d)
+                                        // on_action(d)
                                     }
                                 >
                                     +
@@ -822,7 +581,7 @@ fn ObjectView(
             </div>
         }
     };
-    let view_string = move |v: &str, on_update: Callback<D>| -> HtmlElement<html::Div> {
+    let view_string = move |v: &str| -> HtmlElement<html::Div> {
         let vv = v.to_string();
         let path3 = path3.clone();
         view! {
@@ -859,7 +618,7 @@ fn ObjectView(
                     let mut node = node.clone().get().unwrap().clone();
                     node.value = Value::String("string".to_string());
                     let d = set_item(&node);
-                    on_update(d)
+                    // on_update(d)
                 }
             >
                 -> string
@@ -881,7 +640,7 @@ fn ObjectView(
             {
                 move || match value.get() {
                     Value::Object(value) => view_object(&node.get().unwrap().id, &value),
-                    Value::String(value) => view_string(&value, on_update),
+                    Value::String(value) => view_string(&value),
                     _ => view! { <div>"other"</div> },
                 }
             }
