@@ -1,3 +1,4 @@
+use leptos::*;
 use std::{collections::HashMap, hash};
 
 use leptos::{Signal, SignalGetUntracked, SignalWith};
@@ -6,6 +7,7 @@ use leptos_use::{
     utils::{FromToStringCodec, JsonCodec, StringCodec},
 };
 use maplit::hashmap;
+use serde::Serialize;
 
 use crate::{HasDigest, Node, D};
 
@@ -77,4 +79,17 @@ pub fn set_item(node: &Node) -> D {
     let serialized_node = node.serialize();
     set_item(serialized_node);
     digest
+}
+
+pub fn set_root(d: &D) {
+    logging::log!("set root: {}", d.to_hex());
+    let (_item, set_item, _) = use_local_storage::<String, FromToStringCodec>("root");
+    set_item(d.to_hex());
+}
+
+pub fn get_root() -> D {
+    let (item, _set_item, _) = use_local_storage::<String, FromToStringCodec>("root");
+    let hex = item();
+    logging::log!("root: {}", &hex);
+    D::from_hex(&hex)
 }

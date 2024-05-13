@@ -34,6 +34,7 @@
               pkgs.leptosfmt
               pkgs.nixpkgs-fmt
               pkgs.tailwindcss
+              pkgs.nodePackages.typescript
               (pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
                 extensions = [
                   "clippy"
@@ -45,6 +46,7 @@
                 targets = [
                   "wasm32-unknown-unknown"
                   "x86_64-unknown-linux-musl"
+                  "x86_64-unknown-linux-gnu"
                 ];
               }))
             ];

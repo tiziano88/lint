@@ -347,9 +347,23 @@ impl D {
         format!("sha2-256:{}", hex::encode(self.sha2_256))
     }
 
+    pub fn from_hex(s: &str) -> Self {
+        let sha2_256 = hex::decode(&s[9..]).unwrap();
+        D {
+            sha2_256: sha2_256.try_into().unwrap(),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.sha2_256.iter().all(|&b| b == 0)
     }
+}
+
+// test for from_hex
+#[test]
+fn test_d_from_hex() {
+    let d =
+        D::from_hex("sha2-256:883ba22861ceac0617e6d08c25d6c6868a5cc1757f44f41b70845d23b667323e");
 }
 
 impl HasDigest for Node {
@@ -451,12 +465,19 @@ fn App() -> impl IntoView {
 
     let (root_digest, set_root_digest) = create_signal(d);
 
+    create_effect(move |_| {
+        let d = get_root();
+        logging::log!("root {:?}", d);
+        set_root_digest(d);
+    });
+
     let on_action = move |action| {
         logging::log!("action {:?}", action);
         match action {
             Action::Noop => {}
             Action::Update(path, value) => {
                 let new_d = update_node(&root_digest(), &path, value);
+                set_root(&new_d);
                 set_root_digest(new_d);
             }
             Action::Append {
@@ -483,6 +504,7 @@ fn App() -> impl IntoView {
                     }
                     _ => panic!("expected object value"),
                 });
+                set_root(&new_d);
                 set_root_digest(new_d);
             }
         }
@@ -552,6 +574,10 @@ fn ObjectView(
         let id = id.clone();
         view! {
             <div>
+                <div>
+                    <div>object</div>
+                    <div>{ object_type.name }</div>
+                </div>
                 <For
                     each=move || object_type.fields.clone().into_iter()
                     // a unique key for each item
@@ -582,13 +608,12 @@ fn ObjectView(
                                         let v3 = v3.clone();
                                         let new_path = {
                                             let mut new_path = path4.clone();
-                                            let mut new_path = vec![];
                                             new_path.push(Selector { field_id, index });
                                             new_path
                                         };
                                         view!{
                                             <div class="m-10">
-                                                "digest: " { d.to_hex() }
+                                                { format_path(&new_path) }
                                                 <ObjectView
                                                     schema=schema
                                                     digest=read_d
