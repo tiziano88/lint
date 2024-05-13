@@ -34,7 +34,7 @@
               pkgs.leptosfmt
               pkgs.nixpkgs-fmt
               pkgs.tailwindcss
-              pkgs.nodePackages.typescript
+              # pkgs.nodePackages.daisyui
               (pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
                 extensions = [
                   "clippy"

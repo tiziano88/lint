@@ -437,6 +437,8 @@ fn App() -> impl IntoView {
     let value = create_rw_signal(create_value());
     let _root_type = Type::Object(schema.get_untracked().root_object_type_id);
 
+    let (debug, _set_debug) = create_signal(false);
+
     let selected_path = create_rw_signal(Path::default());
 
     let (history, _set_history) = create_signal(Vec::<D>::new());
@@ -526,6 +528,7 @@ fn App() -> impl IntoView {
               path=vec![]
               selected=selected_path
               on_action=on_action
+              debug=debug
               />
             <button class="button" on:click=move |_| {
                 selected_path.set(parent(&schema.get(), &value.get(), &selected_path.get()));
@@ -550,6 +553,7 @@ fn ObjectView(
     #[prop(into)] on_action: Callback<Action>,
     path: Path,
     selected: RwSignal<Path>,
+    debug: ReadSignal<bool>,
 ) -> impl IntoView {
     let node = Signal::derive(move || get_item_untracked(&digest.get()));
     let value = Signal::derive(move || node.get().unwrap().value.clone());
@@ -574,8 +578,7 @@ fn ObjectView(
         let id = id.clone();
         view! {
             <div>
-                <div>
-                    <div>object</div>
+                <div class="bg-blue-500">
                     <div>{ object_type.name }</div>
                 </div>
                 <For
@@ -620,6 +623,7 @@ fn ObjectView(
                                                     path=new_path
                                                     selected=selected
                                                     on_action=on_action.clone()
+                                                    debug=debug
                                                     />
                                             </div>
                                         }
