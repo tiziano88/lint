@@ -577,7 +577,7 @@ fn ObjectView(
         let path4 = path4.clone();
         let id = id.clone();
         view! {
-            <div>
+            <div class="rounded border-solid border-2 border-blue-800 divide-y">
                 <div class="bg-blue-500">
                     <div>{ object_type.name }</div>
                 </div>
@@ -600,8 +600,6 @@ fn ObjectView(
                         view!{
                             <div>
                                 { field_type.name } "(#" { field_id } ")"
-                            </div>
-                            <div>
                                 <For
                                     each=move || it.clone()
                                     key=|(_, d)| d.clone()
@@ -614,9 +612,14 @@ fn ObjectView(
                                             new_path.push(Selector { field_id, index });
                                             new_path
                                         };
+                                        let new_path_2 = new_path.clone();
                                         view!{
                                             <div class="m-10">
-                                                { format_path(&new_path) }
+                                                <Show
+                                                    when=move || debug()
+                                                >
+                                                  { format_path(&new_path_2) }
+                                                </Show>
                                                 <ObjectView
                                                     schema=schema
                                                     digest=read_d
@@ -657,7 +660,6 @@ fn ObjectView(
                         }
                     }>
                 </For>
-              obj
             </div>
         }
     };
@@ -692,23 +694,12 @@ fn ObjectView(
     };
     view! {
         <div>
-            <button
-                class="button"
-                on:click=move |_| {
-                    let mut node = node.clone().get().unwrap().clone();
-                    node.value = Value::String("string".to_string());
-                    let d = set_item(&node);
-                    // on_update(d)
-                }
-            >
-                -> string
-            </button>
-            <div>
-                digest: {move || digest.get().to_hex() }
-            </div>
-            <div>
-                value: {move || format!("{:?}", node.get().unwrap().value) }
-            </div>
+            <Show when=move || debug()>
+                <div>
+                    digest: {move || digest.get().to_hex() }
+                    value: {move || format!("{:?}", node.get().unwrap().value) }
+                </div>
+            </Show>
             <div
                 class="block"
                 class:selected=s
