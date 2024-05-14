@@ -1,5 +1,5 @@
 dev:
-    trunk serve
+    trunk serve --watch=./src --watch=./input.css
 
 fmt:
     leptosfmt src/*.rs
