@@ -718,14 +718,16 @@ fn ObjectView(
                                                         ></path>
                                                     </svg>
                                                 </div>
-                                                <ObjectView
-                                                    schema=schema
-                                                    digest=read_d
-                                                    path=new_path
-                                                    selected=selected
-                                                    on_action=on_action.clone()
-                                                    debug=debug
-                                                />
+                                                <div class="grow">
+                                                    <ObjectView
+                                                        schema=schema
+                                                        digest=read_d
+                                                        path=new_path
+                                                        selected=selected
+                                                        on_action=on_action.clone()
+                                                        debug=debug
+                                                    />
+                                                </div>
                                             </div>
                                         }
                                     }
@@ -771,9 +773,9 @@ fn ObjectView(
         let vv = v.to_string();
         let path3 = path3.clone();
         view! {
-            <div>
+            <div class="">
                 <input
-                    class="border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 block p-2"
+                    class="border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 grow"
                     type="text"
                     prop:value=move || { vv.clone() }
                     on:input=move |ev| {
@@ -794,7 +796,7 @@ fn ObjectView(
                 </div>
             </Show>
             <div
-                class="block"
+                class="flex"
                 class:selected=s
                 on:click=move |ev| {
                     ev.stop_propagation();
