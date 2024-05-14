@@ -617,7 +617,7 @@ fn ObjectView(
         view! {
             <div class="rounded border-solid border-2 border-blue-800 divide-y">
                 <div class="">
-                    <div class="bg-blue-500 flex p-2">
+                    <div class="bg-blue-500 flex p-2 space-x-2">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
@@ -632,9 +632,23 @@ fn ObjectView(
                                 d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
                             ></path>
                         </svg>
-                        <div class="pl-2">
-                            {object_type.name}
-                        </div>
+                        <div class="">{object_type.name}</div>
+                        <button class="cursor-pointer" title="focus on this element">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="1.5"
+                                stroke="currentColor"
+                                class="w-6 h-6"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                                ></path>
+                            </svg>
+                        </button>
                     </div>
                 </div>
                 // Iterate over the fields of the object type.
@@ -760,7 +774,7 @@ fn ObjectView(
         view! {
             <div>
                 <input
-                    class="border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 block"
+                    class="border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 block p-2"
                     type="text"
                     prop:value=move || { vv.clone() }
                     on:input=move |ev| {
