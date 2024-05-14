@@ -550,6 +550,7 @@ fn App() -> impl IntoView {
                     selected_path.set(parent(&schema.get(), &value.get(), &selected_path.get()));
                 }
             >
+
                 Parent
             </button>
             <button
@@ -558,6 +559,7 @@ fn App() -> impl IntoView {
                     selected_path.set(child(&schema.get(), &value.get(), &selected_path.get()));
                 }
             >
+
                 Child
             </button>
             <button
@@ -566,6 +568,7 @@ fn App() -> impl IntoView {
                     selected_path.set(prev(&schema.get(), &value.get(), &selected_path.get()));
                 }
             >
+
                 Prev
             </button>
             <button
@@ -574,6 +577,7 @@ fn App() -> impl IntoView {
                     selected_path.set(next(&schema.get(), &value.get(), &selected_path.get()));
                 }
             >
+
                 Next
             </button>
         </div>
@@ -612,8 +616,26 @@ fn ObjectView(
         let id = id.clone();
         view! {
             <div class="rounded border-solid border-2 border-blue-800 divide-y">
-                <div class="bg-blue-500">
-                    <div>{object_type.name}</div>
+                <div class="">
+                    <div class="bg-blue-500 flex p-2">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="w-6 h-6"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
+                            ></path>
+                        </svg>
+                        <div class="pl-2">
+                            {object_type.name}
+                        </div>
+                    </div>
                 </div>
                 // Iterate over the fields of the object type.
                 <For
@@ -639,7 +661,7 @@ fn ObjectView(
                             .enumerate()
                             .collect();
                         view! {
-                            <div>
+                            <div class="p-2">
                                 {field_type.name} "(#" {field_id} ")"
                                 // Iterate over the field values.
                                 <For
@@ -657,10 +679,10 @@ fn ObjectView(
                                         let new_path_2 = new_path.clone();
                                         let new_path_3 = new_path.clone();
                                         view! {
-                                            <div class="mx-10 my-2">
+                                            <div class="mx-10 my-2 flex">
                                                 <Show when=move || debug()>{format_path(&new_path_2)}</Show>
                                                 <div
-                                                    class="button"
+                                                    class="cursor-pointer"
                                                     on:click=move |_| {
                                                         on_action(Action::Delete {
                                                             path: new_path_3.clone(),
@@ -668,7 +690,20 @@ fn ObjectView(
                                                     }
                                                 >
 
-                                                    x
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke-width="1.5"
+                                                        stroke="currentColor"
+                                                        class="w-6 h-6"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                                        ></path>
+                                                    </svg>
                                                 </div>
                                                 <ObjectView
                                                     schema=schema
@@ -683,7 +718,7 @@ fn ObjectView(
                                     }
                                 />
                                 <button
-                                    class="button"
+                                    class="cursor-pointer"
                                     on:click=move |_| {
                                         let new_value = field_type.type_.default_value();
                                         on_action(Action::Append {
@@ -695,12 +730,27 @@ fn ObjectView(
                                     }
                                 >
 
-                                    +
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke-width="1.5"
+                                        stroke="currentColor"
+                                        class="w-6 h-6"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                        ></path>
+                                    </svg>
+
                                 </button>
                             </div>
                         }
                     }
                 />
+
             </div>
         }
     };

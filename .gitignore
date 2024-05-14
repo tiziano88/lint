@@ -1,5 +1,6 @@
 /.direnv
 /dist
 /target
+/style/output.css
 /bazel-vscode-target
 /.vscode
