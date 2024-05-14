@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::{ev::select, *};
 use maplit::{btreemap, hashmap};
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
@@ -155,6 +155,9 @@ impl ObjectValue {
     fn append(&mut self, field_id: ID, value: D) {
         let field = self.fields.entry(field_id).or_default();
         field.push(value);
+    }
+    fn delete(&mut self, field_id: ID, index: usize) {
+        self.fields.get_mut(&field_id).map(|v| v.remove(index));
     }
     fn set(&mut self, field_id: ID, index: usize, value: D) {
         let field = self.fields.entry(field_id).or_default();
@@ -396,6 +399,9 @@ enum Action {
         position: Position,
         value: Value,
     },
+    Delete {
+        path: Path,
+    },
 }
 
 #[derive(Default)]
@@ -509,39 +515,67 @@ fn App() -> impl IntoView {
                 set_root(&new_d);
                 set_root_digest(new_d);
             }
+            Action::Delete { path } => {
+                let (parent_path, selector) = path.split_at(path.len() - 1);
+                let selector = selector.first().unwrap();
+                let new_d = update_node_value(&root_digest(), &parent_path.to_vec(), |v| match v {
+                    Value::Object(mut object) => {
+                        object.delete(selector.field_id, selector.index);
+                        Value::Object(object)
+                    }
+                    _ => panic!("expected object value"),
+                });
+                set_root(&new_d);
+                set_root_digest(new_d);
+            }
         }
     };
 
     view! {
         <div>
-            <div>
-                sel: {move || format_path(&selected_path.get())}
-            </div>
-            <div>
-                root_digest: {move || root_digest.get().to_hex()}
-            </div>
-            <div>
-                hist: {move || format!("{:?}", history.get())}
-            </div>
-            <ObjectView schema=schema
-              digest=root_digest
-              path=vec![]
-              selected=selected_path
-              on_action=on_action
-              debug=debug
-              />
-            <button class="button" on:click=move |_| {
-                selected_path.set(parent(&schema.get(), &value.get(), &selected_path.get()));
-            }>Parent</button>
-            <button class="button" on:click=move |_| {
-                selected_path.set(child(&schema.get(), &value.get(), &selected_path.get()));
-            }>Child</button>
-            <button class="button" on:click=move |_| {
-                selected_path.set(prev(&schema.get(), &value.get(), &selected_path.get()));
-            }>Prev</button>
-            <button class="button" on:click=move |_| {
-                selected_path.set(next(&schema.get(), &value.get(), &selected_path.get()));
-            }>Next</button>
+            <div>sel: {move || format_path(&selected_path.get())}</div>
+            <div>root_digest: {move || root_digest.get().to_hex()}</div>
+            <div>hist: {move || format!("{:?}", history.get())}</div>
+            <ObjectView
+                schema=schema
+                digest=root_digest
+                path=vec![]
+                selected=selected_path
+                on_action=on_action
+                debug=debug
+            />
+            <button
+                class="button"
+                on:click=move |_| {
+                    selected_path.set(parent(&schema.get(), &value.get(), &selected_path.get()));
+                }
+            >
+                Parent
+            </button>
+            <button
+                class="button"
+                on:click=move |_| {
+                    selected_path.set(child(&schema.get(), &value.get(), &selected_path.get()));
+                }
+            >
+                Child
+            </button>
+            <button
+                class="button"
+                on:click=move |_| {
+                    selected_path.set(prev(&schema.get(), &value.get(), &selected_path.get()));
+                }
+            >
+                Prev
+            </button>
+            <button
+                class="button"
+                on:click=move |_| {
+                    selected_path.set(next(&schema.get(), &value.get(), &selected_path.get()));
+                }
+            >
+                Next
+            </button>
         </div>
     }
 }
@@ -579,8 +613,9 @@ fn ObjectView(
         view! {
             <div class="rounded border-solid border-2 border-blue-800 divide-y">
                 <div class="bg-blue-500">
-                    <div>{ object_type.name }</div>
+                    <div>{object_type.name}</div>
                 </div>
+                // Iterate over the fields of the object type.
                 <For
                     each=move || object_type.fields.clone().into_iter()
                     // a unique key for each item
@@ -596,14 +631,21 @@ fn ObjectView(
                         let field_type1 = field_type.clone();
                         let path4 = path4.clone();
                         let path5 = path4.clone();
-                        let it: Vec<(usize, D)> = fields.get(&field_id).cloned().unwrap_or_default().into_iter().enumerate().collect();
-                        view!{
+                        let it: Vec<(usize, D)> = fields
+                            .get(&field_id)
+                            .cloned()
+                            .unwrap_or_default()
+                            .into_iter()
+                            .enumerate()
+                            .collect();
+                        view! {
                             <div>
-                                { field_type.name } "(#" { field_id } ")"
+                                {field_type.name} "(#" {field_id} ")"
+                                // Iterate over the field values.
                                 <For
                                     each=move || it.clone()
                                     key=|(_, d)| d.clone()
-                                    children= move |(index, d)| {
+                                    children=move |(index, d)| {
                                         let (read_d, set_d) = create_signal(d.clone());
                                         let field_type = field_type1.clone();
                                         let v3 = v3.clone();
@@ -613,13 +655,21 @@ fn ObjectView(
                                             new_path
                                         };
                                         let new_path_2 = new_path.clone();
-                                        view!{
-                                            <div class="m-10">
-                                                <Show
-                                                    when=move || debug()
+                                        let new_path_3 = new_path.clone();
+                                        view! {
+                                            <div class="mx-10 my-2">
+                                                <Show when=move || debug()>{format_path(&new_path_2)}</Show>
+                                                <div
+                                                    class="button"
+                                                    on:click=move |_| {
+                                                        on_action(Action::Delete {
+                                                            path: new_path_3.clone(),
+                                                        })
+                                                    }
                                                 >
-                                                  { format_path(&new_path_2) }
-                                                </Show>
+
+                                                    x
+                                                </div>
                                                 <ObjectView
                                                     schema=schema
                                                     digest=read_d
@@ -627,25 +677,15 @@ fn ObjectView(
                                                     selected=selected
                                                     on_action=on_action.clone()
                                                     debug=debug
-                                                    />
+                                                />
                                             </div>
                                         }
-                                    }>
-                                </For>
+                                    }
+                                />
                                 <button
                                     class="button"
                                     on:click=move |_| {
-                                        // let mut v = v2.clone();
                                         let new_value = field_type.type_.default_value();
-                                        // let new_value_d = set_item(&Node{
-                                        //     id: new_id(),
-                                        //     value: new_value,
-                                        // });
-                                        // v.append(field_id, new_value_d);
-                                        // let d = set_item(&Node{
-                                        //     id: id,
-                                        //     value: Value::Object(v),
-                                        // });
                                         on_action(Action::Append {
                                             path: path5.clone(),
                                             field_id: field_id.clone(),
@@ -654,12 +694,13 @@ fn ObjectView(
                                         })
                                     }
                                 >
+
                                     +
                                 </button>
                             </div>
                         }
-                    }>
-                </For>
+                    }
+                />
             </div>
         }
     };
@@ -674,21 +715,10 @@ fn ObjectView(
                     prop:value=move || { vv.clone() }
                     on:input=move |ev| {
                         let new_value = event_target_value(&ev);
-                        // logging::log!("new_value {}", new_value);
-                        // let node = Node {
-                        //     id: 1,
-                        //     value: Value::String(new_value),
-                        // };
-                        // let d = set_item(&node);
-                        // on_update(d)
                         on_action(Action::Update(path3.clone(), Value::String(new_value)));
-                        // let parsed = Value::parse(expected_type.type_.clone(), &v);
-                        // logging::log!("parsing {} as {:?} -> {:?}", v, expected_type.type_, parsed);
-                        // if let Some(parsed) = parsed {
-                        //     value.set(parsed);
-                        // }
                     }
                 />
+
             </div>
         }
     };
@@ -696,8 +726,8 @@ fn ObjectView(
         <div>
             <Show when=move || debug()>
                 <div>
-                    digest: {move || digest.get().to_hex() }
-                    value: {move || format!("{:?}", node.get().unwrap().value) }
+                    digest: {move || digest.get().to_hex()} value:
+                    {move || format!("{:?}", node.get().unwrap().value)}
                 </div>
             </Show>
             <div
@@ -708,144 +738,143 @@ fn ObjectView(
                     selected.set(path.clone());
                 }
             >
-            {
-                move || match value.get() {
+
+                {move || match value.get() {
                     Value::Object(value) => view_object(&node.get().unwrap().id, &value),
                     Value::String(value) => view_string(&value),
                     _ => view! { <div>"other"</div> },
-                }
-            }
+                }}
 
-                // <ul class="border border-gray-300 block p-2">
-                //     <For
-                //         each=move || object_type.fields.clone().into_iter()
-                //         // a unique key for each item
-                //         key=|(field_id, _)| *field_id
-                //         // renders each item to a view
-                //         children=move |(field_id, field_type)| {
-                //             let values: Vec<D> = object.fields.get(&field_id).cloned().unwrap_or_default();
-                //             let more_than_one_field_value = values.len() > 1;
-                //             let path2 = path2.clone();
-                //             let default_value = field_type.type_.default_value().clone();
-                //             let add_button = if field_type.repeated || values.len() == 0 {
-                //                 view! {
-                //                     <div class="inline">
-                //                         // <button
-                //                         //     class="button"
-                //                         //     on:click=move |_| {
-                //                         //         let default_value = default_value.clone();
-                //                         //         value
-                //                         //             .update(move |v| {
-                //                         //                 v.push(create_rw_signal(default_value));
-                //                         //             });
-                //                         //     }
-                //                         // >
+            // <ul class="border border-gray-300 block p-2">
+            // <For
+            // each=move || object_type.fields.clone().into_iter()
+            // // a unique key for each item
+            // key=|(field_id, _)| *field_id
+            // // renders each item to a view
+            // children=move |(field_id, field_type)| {
+            // let values: Vec<D> = object.fields.get(&field_id).cloned().unwrap_or_default();
+            // let more_than_one_field_value = values.len() > 1;
+            // let path2 = path2.clone();
+            // let default_value = field_type.type_.default_value().clone();
+            // let add_button = if field_type.repeated || values.len() == 0 {
+            // view! {
+            // <div class="inline">
+            // // <button
+            // //     class="button"
+            // //     on:click=move |_| {
+            // //         let default_value = default_value.clone();
+            // //         value
+            // //             .update(move |v| {
+            // //                 v.push(create_rw_signal(default_value));
+            // //             });
+            // //     }
+            // // >
 
-                //                         //     +
-                //                         // </button>
-                //                     </div>
-                //                 }
-                //             } else {
-                //                 view! { <div></div> }
-                //             };
-                //             let field_type = field_type.clone();
-                //             let field_type2 = field_type.clone();
-                //             let all_field_values = view! {
-                //                 <For
-                //                     each=move || values.clone().into_iter().enumerate()
-                //                     // a unique key for each item
-                //                     key=|(i, _)| *i
-                //                     // renders each item to a view
-                //                     children=move |(i, v)| {
-                //                         let new_path = {
-                //                             let mut new_path = path2.clone();
-                //                             new_path.push(Selector { field_id, index: i });
-                //                             new_path
-                //                         };
-                //                         let view = match field_type2.type_ {
-                //                             Type::Object(_) => {
-                //                                 view! {
-                //                                     <div>
-                //                                         // <ObjectView
-                //                                         //     schema=schema
-                //                                         //     digest=v
-                //                                         //     path=new_path
-                //                                         //     selected=selected
-                //                                         //     on_update=on_update.clone()
-                //                                         // />
-                //                                     </div>
-                //                                 }
-                //                             }
-                //                             _ => {
-                //                                 view! {
-                //                                     <div>
-                //                                         // <ValueView
-                //                                         //     expected_type=field_type2.clone()
-                //                                         //     value=v
-                //                                         //     path=new_path
-                //                                         //     selected=selected
-                //                                         // />
-                //                                     </div>
-                //                                 }
-                //                             }
-                //                         };
-                //                         if more_than_one_field_value {
-                //                             view! {
-                //                                 <div>
-                //                                     <li>
-                //                                         <div class="flex">
-                //                                             // <button
-                //                                             //     class="button"
-                //                                             //     on:click=move |_| {
-                //                                             //         value
-                //                                             //             .update(|v| {
-                //                                             //                 v.remove(i);
-                //                                             //             });
-                //                                             //     }
-                //                                             // >
-                //                                             //     x
-                //                                             // </button>
-                //                                             {view}
-                //                                         </div>
-                //                                     </li>
-                //                                 </div>
-                //                             }
-                //                         } else {
-                //                             view! { <div>{view}</div> }
-                //                         }
-                //                     }
-                //                 />
-                //             };
-                //             let field_type2 = field_type.clone();
-                //             view! {
-                //                 // a unique key for each item
-                //                 // renders each item to a view
+            // //     +
+            // // </button>
+            // </div>
+            // }
+            // } else {
+            // view! { <div></div> }
+            // };
+            // let field_type = field_type.clone();
+            // let field_type2 = field_type.clone();
+            // let all_field_values = view! {
+            // <For
+            // each=move || values.clone().into_iter().enumerate()
+            // // a unique key for each item
+            // key=|(i, _)| *i
+            // // renders each item to a view
+            // children=move |(i, v)| {
+            // let new_path = {
+            // let mut new_path = path2.clone();
+            // new_path.push(Selector { field_id, index: i });
+            // new_path
+            // };
+            // let view = match field_type2.type_ {
+            // Type::Object(_) => {
+            // view! {
+            // <div>
+            // // <ObjectView
+            // //     schema=schema
+            // //     digest=v
+            // //     path=new_path
+            // //     selected=selected
+            // //     on_update=on_update.clone()
+            // // />
+            // </div>
+            // }
+            // }
+            // _ => {
+            // view! {
+            // <div>
+            // // <ValueView
+            // //     expected_type=field_type2.clone()
+            // //     value=v
+            // //     path=new_path
+            // //     selected=selected
+            // // />
+            // </div>
+            // }
+            // }
+            // };
+            // if more_than_one_field_value {
+            // view! {
+            // <div>
+            // <li>
+            // <div class="flex">
+            // // <button
+            // //     class="button"
+            // //     on:click=move |_| {
+            // //         value
+            // //             .update(|v| {
+            // //                 v.remove(i);
+            // //             });
+            // //     }
+            // // >
+            // //     x
+            // // </button>
+            // {view}
+            // </div>
+            // </li>
+            // </div>
+            // }
+            // } else {
+            // view! { <div>{view}</div> }
+            // }
+            // }
+            // />
+            // };
+            // let field_type2 = field_type.clone();
+            // view! {
+            // // a unique key for each item
+            // // renders each item to a view
 
-                //                 <li class="list-disc pl-2">
-                //                     {if more_than_one_field_value {
-                //                         view! {
-                //                             <div>
-                //                                 <div class="inline-block">{field_type2.clone().name} :</div>
-                //                                 <ol class="list-decimal" start=0>
-                //                                     {all_field_values}
-                //                                 </ol>
-                //                             </div>
-                //                         }
-                //                     } else {
-                //                         view! {
-                //                             <div>
-                //                                 <div class="inline-block">{field_type2.clone().name} :</div>
-                //                                 {all_field_values}
-                //                             </div>
-                //                         }
-                //                     }}
-                //                     {add_button}
-                //                 </li>
-                //             }
-                //         }
-                //     />
+            // <li class="list-disc pl-2">
+            // {if more_than_one_field_value {
+            // view! {
+            // <div>
+            // <div class="inline-block">{field_type2.clone().name} :</div>
+            // <ol class="list-decimal" start=0>
+            // {all_field_values}
+            // </ol>
+            // </div>
+            // }
+            // } else {
+            // view! {
+            // <div>
+            // <div class="inline-block">{field_type2.clone().name} :</div>
+            // {all_field_values}
+            // </div>
+            // }
+            // }}
+            // {add_button}
+            // </li>
+            // }
+            // }
+            // />
 
-                // </ul>
+            // </ul>
             </div>
         </div>
     }
@@ -890,6 +919,7 @@ fn ValueView(
                 selected.set(path.clone());
             }
         >
+
             {text_box}
         </div>
     }

@@ -1,6 +1,9 @@
 dev:
     trunk serve
 
+fmt:
+    leptosfmt src/*.rs
+
 check:
     cargo check --target=wasm32-unknown-unknown
 
