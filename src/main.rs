@@ -1,11 +1,10 @@
-use leptos::{ev::select, *};
-use maplit::{btreemap, hashmap};
+use leptos::*;
+use maplit::btreemap;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{self, Display, Formatter},
-    path,
     sync::Arc,
 };
 
@@ -449,7 +448,7 @@ fn App() -> impl IntoView {
 
     let (history, _set_history) = create_signal(Vec::<D>::new());
 
-    let mut store = Arc::new(LocalStorage::<Node, D>::new());
+    let store = Arc::new(LocalStorage::<Node, D>::new());
 
     let node = Node {
         id: 1,
