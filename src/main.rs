@@ -695,7 +695,7 @@ fn ObjectView(
                                             <div class="mx-4 my-2 flex">
                                                 <Show when=move || debug()>{format_path(&new_path_2)}</Show>
                                                 <div
-                                                    class="cursor-pointer"
+                                                    class="cursor-pointer text-red"
                                                     on:click=move |_| {
                                                         on_action(Action::Delete {
                                                             path: new_path_3.clone(),
@@ -733,7 +733,7 @@ fn ObjectView(
                                     }
                                 />
                                 <button
-                                    class="cursor-pointer"
+                                    class="cursor-pointer text-green"
                                     on:click=move |_| {
                                         let new_value = field_type.type_.default_value();
                                         on_action(Action::Append {
