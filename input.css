@@ -5,9 +5,9 @@
 /* @import "https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css"; */
 
 .button {
-  @apply bg-blue-500 text-white font-bold py-1 px-2 rounded;
+  /* @apply bg-blue-500 text-white font-bold py-1 px-2 rounded; */
 }
 
 .selected {
-  @apply ring-2 border-blue-900;
+  /* @apply ring-2 border-blue-900; */
 }

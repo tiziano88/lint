@@ -614,9 +614,9 @@ fn ObjectView(
         let path4 = path4.clone();
         let id = id.clone();
         view! {
-            <div class="rounded border-solid border-2 border-blue-800 divide-y">
+            <div class="rounded border-solid border-2 border-blue divide-y">
                 <div class="">
-                    <div class="bg-blue-500 flex p-2 space-x-2">
+                    <div class="bg-blue flex p-2 space-x-2">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
@@ -692,7 +692,7 @@ fn ObjectView(
                                         let new_path_2 = new_path.clone();
                                         let new_path_3 = new_path.clone();
                                         view! {
-                                            <div class="mx-10 my-2 flex">
+                                            <div class="mx-4 my-2 flex">
                                                 <Show when=move || debug()>{format_path(&new_path_2)}</Show>
                                                 <div
                                                     class="cursor-pointer"
@@ -773,9 +773,9 @@ fn ObjectView(
         let vv = v.to_string();
         let path3 = path3.clone();
         view! {
-            <div class="">
+            <div class="w-full">
                 <input
-                    class="border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 grow"
+                    class="border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 w-full"
                     type="text"
                     prop:value=move || { vv.clone() }
                     on:input=move |ev| {
@@ -796,7 +796,7 @@ fn ObjectView(
                 </div>
             </Show>
             <div
-                class="flex"
+                class=""
                 class:selected=s
                 on:click=move |ev| {
                     ev.stop_propagation();
