@@ -11,3 +11,13 @@
 .selected {
   /* @apply ring-2 border-blue-900; */
 }
+
+html {
+  @apply bg-bg text-fg;
+  /* @apply font-mono; */
+  font-family: "Victor Mono";
+}
+
+input {
+  @apply bg-bg2 text-fg;
+}

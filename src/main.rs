@@ -531,7 +531,7 @@ fn App() -> impl IntoView {
     };
 
     view! {
-        <div>
+        <div class="">
             <div>sel: {move || format_path(&selected_path.get())}</div>
             <div>root_digest: {move || root_digest.get().to_hex()}</div>
             <div>hist: {move || format!("{:?}", history.get())}</div>
