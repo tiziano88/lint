@@ -20,17 +20,17 @@ pub fn create_schema() -> Schema {
                     },
                     1 => FieldType {
                         name: "dependencies".to_string(),
-                        type_: Type::Object(893728943),
+                        type_: Type::Object(7218972),
                         repeated: true,
                     },
                     2 => FieldType {
                         name: "dev-dependencies".to_string(),
-                        type_: Type::Object(893728943),
+                        type_: Type::Object(7218972),
                         repeated: true,
                     },
                     3 => FieldType {
                         name: "build-dependencies".to_string(),
-                        type_: Type::Object(893728943),
+                        type_: Type::Object(7218972),
                         repeated: true,
                     },
                     4 => FieldType {
@@ -151,6 +151,51 @@ pub fn create_schema() -> Schema {
                     },
                     11 => FieldType {
                         name: "metadata".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                },
+            },
+            7218972 => ObjectType {
+                name: "Dependency".to_string(),
+                fields: btreemap! {
+                    12093 => FieldType {
+                        name: "name".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    912831 => FieldType {
+                        name: "version".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    12987123 => FieldType {
+                        name: "registry".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    2098713 => FieldType {
+                        name: "git".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    912783 => FieldType {
+                        name: "branch".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    341231 => FieldType {
+                        name: "tag".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    123901 => FieldType {
+                        name: "rev".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    198293 => FieldType {
+                        name: "path".to_string(),
                         type_: Type::String,
                         repeated: false,
                     },

@@ -675,11 +675,15 @@ fn ObjectView(
                             .collect();
                         view! {
                             <div class="p-2">
-                                {field_type.name} "(#" {field_id} ")"
+                                {field_type.name}
+                                <Show when=move || debug()>
+                                    "(#" {field_id} ")"
+                                </Show>
                                 // Iterate over the field values.
                                 <For
                                     each=move || it.clone()
                                     key=|(_, d)| d.clone()
+                                    // key=|(i, _)| i.clone()
                                     children=move |(index, d)| {
                                         let (read_d, set_d) = create_signal(d.clone());
                                         let field_type = field_type1.clone();
