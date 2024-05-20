@@ -437,6 +437,41 @@ fn update_node_value<F: FnOnce(Value) -> Value>(base: &D, path: &Path, update_fn
 }
 
 #[component]
+fn List() -> impl IntoView {
+    let (v, set_v) = create_signal(vec![1, 2, 3]);
+    view! {
+        <div>
+            <For each=move || 0..v.with(Vec::len) key=|i| i.clone() children=move |i| {
+                let vv = create_memo(move |_| {
+                    v.with(|v| v[i].clone())
+                });
+                view!{
+                    <Thing v=vv />
+                }
+            }/>
+            <button
+                on:click=move |_| {
+                    set_v.update(|x| x[1]+=1);
+                }
+            >
+                Inc
+            </button>
+        </div>
+
+    }
+}
+
+#[component]
+fn Thing(#[prop(into)] v: Memo<i32>) -> impl IntoView {
+    logging::log!("Thing {:?}", v.get_untracked());
+    view! {
+        <div>
+            {move || v.get()}
+        </div>
+    }
+}
+
+#[component]
 fn App() -> impl IntoView {
     let (schema, _set_schema) = create_signal(create_schema());
     let value = create_rw_signal(create_value());
@@ -532,6 +567,7 @@ fn App() -> impl IntoView {
 
     view! {
         <div class="">
+            <List />
             <div>sel: {move || format_path(&selected_path.get())}</div>
             <div>root_digest: {move || root_digest.get().to_hex()}</div>
             <div>hist: {move || format!("{:?}", history.get())}</div>
