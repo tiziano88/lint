@@ -202,6 +202,172 @@ pub fn create_schema() -> Schema {
                 },
             },
 
+            // Dockerfile
+            213792873 => ObjectType {
+                name: "Dockerfile".to_string(),
+                fields: btreemap! {
+                    2871232 => FieldType {
+                        name: "commands".to_string(),
+                        type_: Type::Object(28973111),
+                        repeated: true,
+                    },
+                }
+            },
+            28973111 => ObjectType {
+                name: "Dockerfile Command".to_string(),
+                fields: btreemap! {
+                    128371 => FieldType {
+                        name: "from".to_string(),
+                        type_: Type::Object(29187312),
+                        repeated: false,
+                    },
+                    89723 => FieldType {
+                        name: "run".to_string(),
+                        type_: Type::Object(273819273),
+                        repeated: true,
+                    },
+                    1987312 => FieldType {
+                        name: "cmd".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    129837 => FieldType {
+                        name: "label".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    129837 => FieldType {
+                        name: "expose".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    129837 => FieldType {
+                        name: "env".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    1927131 => FieldType {
+                        name: "add".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    23812319 => FieldType {
+                        name: "copy".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    6412128 => FieldType {
+                        name: "entrypoint".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    21897312 => FieldType {
+                        name: "volume".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    1298371 => FieldType {
+                        name: "user".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    119283 => FieldType {
+                        name: "workdir".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    1122811 => FieldType {
+                        name: "arg".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    11929911 => FieldType {
+                        name: "onbuild".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    9989231 => FieldType {
+                        name: "stopsignal".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    1287311 => FieldType {
+                        name: "healthcheck".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    199198 => FieldType {
+                        name: "shell".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                }
+            },
+
+            // https://docs.docker.com/reference/dockerfile/#from
+            29187312 => ObjectType {
+                name: "Dockerfile FROM".to_string(),
+                fields: btreemap! {
+                    281731 => FieldType {
+                        name: "image".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    976981231 => FieldType {
+                        name: "tag".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    8912731 => FieldType {
+                        name: "digest".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    8197129 => FieldType {
+                        name: "as".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                }
+            },
+
+            // https://docs.docker.com/reference/dockerfile/#run
+            273819273 => ObjectType {
+                name: "Dockerfile RUN".to_string(),
+                fields: btreemap! {
+                    1279811 => FieldType {
+                        name: "command".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    9002137 => FieldType {
+                        name: "network".to_string(),
+                        type_: Type::Object(87123897),
+                        repeated: false,
+                    },
+                }
+            },
+            87123897 => ObjectType {
+                name: "Dockerfile RUN network".to_string(),
+                fields: btreemap! {
+                    29187312 => FieldType {
+                        name: "default".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    98123981 => FieldType {
+                        name: "none".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    9128232 => FieldType {
+                        name: "host".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                }
+            },
+
             27092 => ObjectType {
                 name: "User".to_string(),
                 fields: btreemap! {
@@ -253,6 +419,11 @@ pub fn create_schema() -> Schema {
                     4 => FieldType {
                         name: "cargo".to_string(),
                         type_: Type::Object(893728943),
+                        repeated: false,
+                    },
+                    2287312 => FieldType {
+                        name: "docker".to_string(),
+                        type_: Type::Object(213792873),
                         repeated: false,
                     },
                 },

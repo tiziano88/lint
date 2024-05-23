@@ -522,8 +522,20 @@ fn App() -> impl IntoView {
     create_effect(move |_| {
         let d = get_root();
         logging::log!("root {:?}", d);
-        set_root_digest(d);
+        set_root_digest(d.clone());
+        window()
+            .location()
+            .replace(format!("/#{}", d.to_hex()).as_str())
+            .expect("failed to replace location");
     });
+    // create_effect(move |_| {
+    //     let hash = window().location().hash().unwrap();
+    //     if hash.len() > 1 {
+    //         let d = D::from_hex(&hash[1..]);
+    //         logging::log!("hash {:?}", d.to_hex());
+    //         set_root_digest(d);
+    //     }
+    // });
 
     let on_action = move |action| {
         logging::log!("action {:?}", action);
