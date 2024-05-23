@@ -6,6 +6,7 @@ use sha2::Digest;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{self, Display, Formatter},
+    process::id,
     sync::Arc,
 };
 
@@ -464,6 +465,7 @@ fn List() -> impl IntoView {
                     set_v.update(|x| x[1] += 1);
                 }
             >
+
                 Inc
             </button>
             <button on:click=move |_| {
@@ -651,28 +653,30 @@ fn ObjectView(
     let path8 = path.clone();
     let s = create_memo(move |_| path1 == selected.get());
     fn change_value() {}
-    let view_object = move |id: &ID, v: &ObjectValue| -> HtmlElement<html::Div> {
+    let view_object = move |id: Memo<ID>, v: Memo<ObjectValue>| -> HtmlElement<html::Div> {
         logging::log!("view_object {:?} {:?}", path2, v);
-        let object_type = schema
-            .get()
-            .object_types
-            .get(&v.object_type_id)
-            .unwrap()
-            .clone();
+        let object_type = move || {
+            schema
+                .get()
+                .object_types
+                .get(&v().object_type_id)
+                .unwrap()
+                .clone()
+        };
         let v = v.clone();
         let v1 = v.clone();
         let v2 = v.clone();
         let v3 = v.clone();
         let path4 = path4.clone();
-        let id = id.clone();
-        let dummy = vec![(
-            0,
-            FieldType {
-                name: "name".to_string(),
-                type_: Type::String,
-                repeated: false,
-            },
-        )];
+        let field_ids = move || {
+            object_type()
+                .clone()
+                .fields
+                .clone()
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()
+        };
         view! {
             <div class="rounded border-solid border-2 border-blue divide-y">
                 <div class="">
@@ -691,7 +695,7 @@ fn ObjectView(
                                 d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
                             ></path>
                         </svg>
-                        <div class="">{object_type.name}</div>
+                        <div class="">{move || object_type().name}</div>
                         <button class="cursor-pointer" title="focus on this element">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -718,15 +722,17 @@ fn ObjectView(
                     // type_: Type::String,
                     // repeated: false,
                     // })]
-                    each=move || 0..2
+                    each=move || field_ids()
                     // a unique key for each item
                     key=|field_id| *field_id
                     // renders each item to a view
                     children=move |field_id| {
-                        let field_type = object_type.fields.get(&field_id).unwrap().clone();
+                        let field_type = move || {
+                            object_type().fields.get(&field_id).unwrap().clone()
+                        };
                         let v3 = v3.clone();
-                        let fields = v.fields.clone();
-                        let fields1 = v.fields.clone();
+                        let fields = move || v().fields.clone();
+                        let fields1 = move || v().fields.clone();
                         let field_type = field_type.clone();
                         let field_type1 = field_type.clone();
                         let path4 = path4.clone();
@@ -744,12 +750,12 @@ fn ObjectView(
                             // .enumerate()
                             // .collect();
                             <div class="p-2">
-                                {field_type.name}
+                                {move || field_type().name}
                                 <Show when=move || debug()>"(#" {field_id} ")"</Show>
                                 // Iterate over the field values.
                                 <For
                                     each=move || {
-                                        0..fields.get(&field_id).map(Vec::len).unwrap_or_default()
+                                        0..fields().get(&field_id).map(Vec::len).unwrap_or_default()
                                     }
 
                                     key=|i| i.clone()
@@ -757,7 +763,7 @@ fn ObjectView(
                                     children=move |index| {
                                         let fields1 = fields1.clone();
                                         let read_d = create_memo(move |_| {
-                                            fields1
+                                            fields1()
                                                 .get(&field_id)
                                                 .cloned()
                                                 .unwrap_or_default()[index]
@@ -816,12 +822,12 @@ fn ObjectView(
                                 <button
                                     class="cursor-pointer text-green"
                                     on:click=move |_| {
-                                        let new_value = field_type.type_.default_value();
+                                        let new_value = move || field_type().type_.default_value();
                                         on_action(Action::Append {
                                             path: path5.clone(),
                                             field_id: field_id.clone(),
                                             position: Position::Last,
-                                            value: new_value,
+                                            value: new_value(),
                                         })
                                     }
                                 >
@@ -906,118 +912,15 @@ fn ObjectView(
                 }
             >
 
-                // {move || match value.get() {
-                // Value::Object(value) => view_object(&node.get_untracked().unwrap().id, &value),
-                // Value::String(value) => view_string(&value),
-                // _ => view! { <div>"other"</div> },
-                // }}
                 <Show when=move || is_object()>
 
                     {
-                        let object_type = object_type_memo.get();
-                        logging::log!("object type {:?}", object_type);
-                        let field_ids: Vec<_> = object_type
-                            .clone()
-                            .fields
-                            .clone()
-                            .keys()
-                            .cloned()
-                            .collect();
-                        logging::log!("object fields {:?}", field_ids);
-                        let path8 = path8.clone();
-                        view! {
-                            <For
-                                // each=move || object_type.fields.clone().into_iter()
-                                // each=move || vec![(0, FieldType {
-                                // name: "name".to_string(),
-                                // type_: Type::String,
-                                // repeated: false,
-                                // })]
-                                each=move || field_ids.clone()
-                                // a unique key for each item
-                                key=|field_id| *field_id
-                                // renders each item to a view
-                                children=move |field_id| {
-                                    let field_type = move || {
-                                        object_type_memo
-                                            .get()
-                                            .fields
-                                            .get(&field_id)
-                                            .unwrap()
-                                            .clone()
-                                    };
-                                    let object_value = move || match value.get() {
-                                        Value::Object(value) => value,
-                                        _ => panic!("expected object value"),
-                                    };
-                                    logging::log!(
-                                        "  object_value {:?} {:?}", digest.get().to_hex(),
-                                        object_value()
-                                    );
-                                    let len = create_memo(move |_| {
-                                        object_value()
-                                            .fields
-                                            .get(&field_id)
-                                            .map(Vec::len)
-                                            .unwrap_or_default()
-                                    });
-                                    logging::log!("  field_id {:?} len {:?}", field_id, len());
-                                    let path8 = path8.clone();
-                                    view! {
-                                        // logging::log!("for field_id {:?} [{:?}]", field_id, field_type.get());
-                                        // let object_value_1 = object_value.clone();
-                                        <For
-                                            each=move || { 0..len() }
-                                            key=|index| *index
-                                            children=move |field_index| {
-                                                logging::log!("  rendering field {:?}[{:?}]", field_id, field_index);
-                                                let new_path = {
-                                                    let mut new_path = path8.clone();
-                                                    new_path
-                                                        .push(Selector {
-                                                            field_id,
-                                                            index: field_index,
-                                                        });
-                                                    new_path
-                                                };
-                                                let read_d = create_memo(move |_| {
-                                                    value
-                                                        .with(|v| match v {
-                                                            Value::Object(value) => {
-                                                                value
-                                                                    .fields
-                                                                    .get(&field_id)
-                                                                    .cloned()
-                                                                    .unwrap_or_default()
-                                                                    .get(field_index)
-                                                                    .cloned()
-                                                                    .expect("no value")
-                                                            }
-                                                            _ => panic!("expected object value"),
-                                                        })
-                                                });
-                                                view! {
-                                                    // let mut new_path = // path/
-
-                                                    // let mut new_path = path5.clone();
-
-                                                    // let object_type = schema.get().object_types.get(&1).unwrap().clone();
-                                                    // let field_type = object_type.fields.get(&field_id).unwrap().clone();
-                                                    <ObjectView
-                                                        schema=schema
-                                                        digest=read_d
-                                                        path=new_path
-                                                        selected=selected
-                                                        on_action=on_action.clone()
-                                                        debug=debug
-                                                    />
-                                                }
-                                            }
-                                        />
-                                    }
-                                }
-                            />
-                        }
+                        let object_value = create_memo(move |_| match value.get() {
+                            Value::Object(value) => value,
+                            _ => panic!("expected object value"),
+                        });
+                        let object_id = create_memo(move |_| object_value().object_type_id);
+                        view_object(object_id, object_value)
                     }
 
                 </Show>
@@ -1027,7 +930,6 @@ fn ObjectView(
                 }>
 
                     {
-                        logging::log!("string value");
                         let string_value = create_memo(move |_| match value.get() {
                             Value::String(value) => value,
                             _ => panic!("expected string value"),
