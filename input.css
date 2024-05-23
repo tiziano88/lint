@@ -16,6 +16,7 @@ html {
   @apply bg-bg text-fg;
   /* @apply font-mono; */
   font-family: "Victor Mono";
+  font-size: 0.6rem;
 }
 
 input {
