@@ -1,3 +1,4 @@
+use core::panic;
 use leptos::*;
 use maplit::btreemap;
 use serde::{Deserialize, Serialize};
@@ -44,7 +45,7 @@ fn new_id() -> ID {
     rand::random()
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Type {
     String,
     Int,
@@ -94,13 +95,13 @@ impl Type {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct ObjectType {
     name: String,
     fields: BTreeMap<ID, FieldType>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct FieldType {
     name: String,
     type_: Type,
@@ -144,7 +145,7 @@ impl Value {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 struct ObjectValue {
     object_type_id: ID,
     fields: BTreeMap<ID, Vec<D>>,
@@ -170,6 +171,7 @@ impl ObjectValue {
 type FieldValue = RwSignal<Vec<RwSignal<Value>>>;
 
 fn main() {
+    console_error_panic_hook::set_once();
     mount_to_body(|| view! { <App/> })
 }
 
@@ -439,40 +441,47 @@ fn update_node_value<F: FnOnce(Value) -> Value>(base: &D, path: &Path, update_fn
 #[component]
 fn List() -> impl IntoView {
     let (v, set_v) = create_signal(vec![1, 2, 3]);
+    let (other, set_other) = create_signal(123);
     view! {
         <div>
-            <For each=move || 0..v.with(Vec::len) key=|i| i.clone() children=move |i| {
-                let vv = create_memo(move |_| {
-                    v.with(|v| v[i].clone())
-                });
-                view!{
-                    <Thing v=vv />
+            {move || other.get()}
+            <For
+                each=move || 0..v.with(Vec::len)
+                key=|i| i.clone()
+                children=move |i| {
+                    let vv = create_memo(move |_| { v.with(|v| v[i].clone()) });
+                    view! {
+                        <div>
+                            <Thing v=vv/>
+                            {move || other.get()}
+                        </div>
+                    }
                 }
-            }/>
+            />
             <button
+                class="block"
                 on:click=move |_| {
-                    set_v.update(|x| x[1]+=1);
+                    set_v.update(|x| x[1] += 1);
                 }
             >
                 Inc
             </button>
+            <button on:click=move |_| {
+                set_other.update(|other| *other += 1);
+            }>other</button>
         </div>
-
     }
 }
 
 #[component]
 fn Thing(#[prop(into)] v: Memo<i32>) -> impl IntoView {
     logging::log!("Thing {:?}", v.get_untracked());
-    view! {
-        <div>
-            {move || v.get()}
-        </div>
-    }
+    view! { <div>{move || v.get()}</div> }
 }
 
 #[component]
 fn App() -> impl IntoView {
+    logging::log!("rendering App");
     let (schema, _set_schema) = create_signal(create_schema());
     let value = create_rw_signal(create_value());
     let _root_type = Type::Object(schema.get_untracked().root_object_type_id);
@@ -506,6 +515,7 @@ fn App() -> impl IntoView {
     // let root_digest = Signal::derive(move || history.get().last().cloned().unwrap());
 
     let (root_digest, set_root_digest) = create_signal(d);
+    let root_digest_memo = create_memo(move |_| root_digest.get());
 
     create_effect(move |_| {
         let d = get_root();
@@ -567,13 +577,13 @@ fn App() -> impl IntoView {
 
     view! {
         <div class="">
-            <List />
+            // <List/>
             <div>sel: {move || format_path(&selected_path.get())}</div>
             <div>root_digest: {move || root_digest.get().to_hex()}</div>
             <div>hist: {move || format!("{:?}", history.get())}</div>
             <ObjectView
                 schema=schema
-                digest=root_digest
+                digest=root_digest_memo
                 path=vec![]
                 selected=selected_path
                 on_action=on_action
@@ -622,21 +632,27 @@ fn App() -> impl IntoView {
 #[component]
 fn ObjectView(
     schema: ReadSignal<Schema>,
-    digest: ReadSignal<D>,
+    digest: Memo<D>,
     #[prop(into)] on_action: Callback<Action>,
     path: Path,
     selected: RwSignal<Path>,
     debug: ReadSignal<bool>,
 ) -> impl IntoView {
-    let node = Signal::derive(move || get_item_untracked(&digest.get()));
-    let value = Signal::derive(move || node.get().unwrap().value.clone());
+    logging::log!("rendering ObjectView {:?}", path);
+    let node = create_memo(move |_| get_item_untracked(&digest.get()));
+    let value = create_memo(move |_| node.get().unwrap().value.clone());
     let path1 = path.clone();
     let path2 = path.clone();
     let path3 = path.clone();
     let path4 = path.clone();
+    let path5 = path.clone();
+    let path6 = path.clone();
+    let path7 = path.clone();
+    let path8 = path.clone();
     let s = create_memo(move |_| path1 == selected.get());
     fn change_value() {}
     let view_object = move |id: &ID, v: &ObjectValue| -> HtmlElement<html::Div> {
+        logging::log!("view_object {:?} {:?}", path2, v);
         let object_type = schema
             .get()
             .object_types
@@ -649,6 +665,14 @@ fn ObjectView(
         let v3 = v.clone();
         let path4 = path4.clone();
         let id = id.clone();
+        let dummy = vec![(
+            0,
+            FieldType {
+                name: "name".to_string(),
+                type_: Type::String,
+                repeated: false,
+            },
+        )];
         view! {
             <div class="rounded border-solid border-2 border-blue divide-y">
                 <div class="">
@@ -688,13 +712,18 @@ fn ObjectView(
                 </div>
                 // Iterate over the fields of the object type.
                 <For
-                    each=move || object_type.fields.clone().into_iter()
+                    // each=move || object_type.fields.clone().into_iter()
+                    // each=move || vec![(0, FieldType {
+                    // name: "name".to_string(),
+                    // type_: Type::String,
+                    // repeated: false,
+                    // })]
+                    each=move || 0..2
                     // a unique key for each item
-                    key=|(field_id, _)| *field_id
+                    key=|field_id| *field_id
                     // renders each item to a view
-                    children=move |(field_id, field_type)| {
-                        let v1 = v.clone();
-                        let v2 = v2.clone();
+                    children=move |field_id| {
+                        let field_type = object_type.fields.get(&field_id).unwrap().clone();
                         let v3 = v3.clone();
                         let fields = v.fields.clone();
                         let fields1 = v.fields.clone();
@@ -702,26 +731,38 @@ fn ObjectView(
                         let field_type1 = field_type.clone();
                         let path4 = path4.clone();
                         let path5 = path4.clone();
-                        let it: Vec<(usize, D)> = fields
-                            .get(&field_id)
-                            .cloned()
-                            .unwrap_or_default()
-                            .into_iter()
-                            .enumerate()
-                            .collect();
                         view! {
+                            // logging::log!("for field_id {:?}", field_id);
+                            // let v1 = v.clone();
+                            // let v2 = v2.clone();
+                            // let fields2 = v.fields.clone();
+                            // let it: Vec<(usize, D)> = fields
+                            // .get(&field_id)
+                            // .cloned()
+                            // .unwrap_or_default()
+                            // .into_iter()
+                            // .enumerate()
+                            // .collect();
                             <div class="p-2">
                                 {field_type.name}
-                                <Show when=move || debug()>
-                                    "(#" {field_id} ")"
-                                </Show>
+                                <Show when=move || debug()>"(#" {field_id} ")"</Show>
                                 // Iterate over the field values.
                                 <For
-                                    each=move || it.clone()
-                                    key=|(_, d)| d.clone()
+                                    each=move || {
+                                        0..fields.get(&field_id).map(Vec::len).unwrap_or_default()
+                                    }
+
+                                    key=|i| i.clone()
                                     // key=|(i, _)| i.clone()
-                                    children=move |(index, d)| {
-                                        let (read_d, set_d) = create_signal(d.clone());
+                                    children=move |index| {
+                                        let fields1 = fields1.clone();
+                                        let read_d = create_memo(move |_| {
+                                            fields1
+                                                .get(&field_id)
+                                                .cloned()
+                                                .unwrap_or_default()[index]
+                                                .clone()
+                                        });
                                         let field_type = field_type1.clone();
                                         let v3 = v3.clone();
                                         let new_path = {
@@ -809,15 +850,15 @@ fn ObjectView(
             </div>
         }
     };
-    let view_string = move |v: &str| -> HtmlElement<html::Div> {
-        let vv = v.to_string();
+    let view_string = move |v: Memo<String>| -> HtmlElement<html::Div> {
+        // let vv = v.to_string();
         let path3 = path3.clone();
         view! {
             <div class="w-full">
                 <input
                     class="border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 w-full"
                     type="text"
-                    prop:value=move || { vv.clone() }
+                    prop:value=move || { v.get() }
                     on:input=move |ev| {
                         let new_value = event_target_value(&ev);
                         on_action(Action::Update(path3.clone(), Value::String(new_value)));
@@ -827,6 +868,27 @@ fn ObjectView(
             </div>
         }
     };
+    let is_object = create_memo(move |_| match value.get() {
+        Value::Object(_) => true,
+        _ => false,
+    });
+    let is_string = create_memo(move |_| match value.get() {
+        Value::String(_) => true,
+        _ => false,
+    });
+    let object_type_memo = create_memo(move |_| {
+        logging::log!("object_type_memo {:?}", value.get());
+        let object_value = match value.get() {
+            Value::Object(value) => value,
+            _ => panic!("expected object value"),
+        };
+        schema
+            .get()
+            .object_types
+            .get(&object_value.object_type_id)
+            .unwrap()
+            .clone()
+    });
     view! {
         <div>
             <Show when=move || debug()>
@@ -844,142 +906,137 @@ fn ObjectView(
                 }
             >
 
-                {move || match value.get() {
-                    Value::Object(value) => view_object(&node.get().unwrap().id, &value),
-                    Value::String(value) => view_string(&value),
-                    _ => view! { <div>"other"</div> },
-                }}
+                // {move || match value.get() {
+                // Value::Object(value) => view_object(&node.get_untracked().unwrap().id, &value),
+                // Value::String(value) => view_string(&value),
+                // _ => view! { <div>"other"</div> },
+                // }}
+                <Show when=move || is_object()>
 
-            // <ul class="border border-gray-300 block p-2">
-            // <For
-            // each=move || object_type.fields.clone().into_iter()
-            // // a unique key for each item
-            // key=|(field_id, _)| *field_id
-            // // renders each item to a view
-            // children=move |(field_id, field_type)| {
-            // let values: Vec<D> = object.fields.get(&field_id).cloned().unwrap_or_default();
-            // let more_than_one_field_value = values.len() > 1;
-            // let path2 = path2.clone();
-            // let default_value = field_type.type_.default_value().clone();
-            // let add_button = if field_type.repeated || values.len() == 0 {
-            // view! {
-            // <div class="inline">
-            // // <button
-            // //     class="button"
-            // //     on:click=move |_| {
-            // //         let default_value = default_value.clone();
-            // //         value
-            // //             .update(move |v| {
-            // //                 v.push(create_rw_signal(default_value));
-            // //             });
-            // //     }
-            // // >
+                    {
+                        let object_type = object_type_memo.get();
+                        logging::log!("object type {:?}", object_type);
+                        let field_ids: Vec<_> = object_type
+                            .clone()
+                            .fields
+                            .clone()
+                            .keys()
+                            .cloned()
+                            .collect();
+                        logging::log!("object fields {:?}", field_ids);
+                        let path8 = path8.clone();
+                        view! {
+                            <For
+                                // each=move || object_type.fields.clone().into_iter()
+                                // each=move || vec![(0, FieldType {
+                                // name: "name".to_string(),
+                                // type_: Type::String,
+                                // repeated: false,
+                                // })]
+                                each=move || field_ids.clone()
+                                // a unique key for each item
+                                key=|field_id| *field_id
+                                // renders each item to a view
+                                children=move |field_id| {
+                                    let field_type = move || {
+                                        object_type_memo
+                                            .get()
+                                            .fields
+                                            .get(&field_id)
+                                            .unwrap()
+                                            .clone()
+                                    };
+                                    let object_value = move || match value.get() {
+                                        Value::Object(value) => value,
+                                        _ => panic!("expected object value"),
+                                    };
+                                    logging::log!(
+                                        "  object_value {:?} {:?}", digest.get().to_hex(),
+                                        object_value()
+                                    );
+                                    let len = create_memo(move |_| {
+                                        object_value()
+                                            .fields
+                                            .get(&field_id)
+                                            .map(Vec::len)
+                                            .unwrap_or_default()
+                                    });
+                                    logging::log!("  field_id {:?} len {:?}", field_id, len());
+                                    let path8 = path8.clone();
+                                    view! {
+                                        // logging::log!("for field_id {:?} [{:?}]", field_id, field_type.get());
+                                        // let object_value_1 = object_value.clone();
+                                        <For
+                                            each=move || { 0..len() }
+                                            key=|index| *index
+                                            children=move |field_index| {
+                                                logging::log!("  rendering field {:?}[{:?}]", field_id, field_index);
+                                                let new_path = {
+                                                    let mut new_path = path8.clone();
+                                                    new_path
+                                                        .push(Selector {
+                                                            field_id,
+                                                            index: field_index,
+                                                        });
+                                                    new_path
+                                                };
+                                                let read_d = create_memo(move |_| {
+                                                    value
+                                                        .with(|v| match v {
+                                                            Value::Object(value) => {
+                                                                value
+                                                                    .fields
+                                                                    .get(&field_id)
+                                                                    .cloned()
+                                                                    .unwrap_or_default()
+                                                                    .get(field_index)
+                                                                    .cloned()
+                                                                    .expect("no value")
+                                                            }
+                                                            _ => panic!("expected object value"),
+                                                        })
+                                                });
+                                                view! {
+                                                    // let mut new_path = // path/
 
-            // //     +
-            // // </button>
-            // </div>
-            // }
-            // } else {
-            // view! { <div></div> }
-            // };
-            // let field_type = field_type.clone();
-            // let field_type2 = field_type.clone();
-            // let all_field_values = view! {
-            // <For
-            // each=move || values.clone().into_iter().enumerate()
-            // // a unique key for each item
-            // key=|(i, _)| *i
-            // // renders each item to a view
-            // children=move |(i, v)| {
-            // let new_path = {
-            // let mut new_path = path2.clone();
-            // new_path.push(Selector { field_id, index: i });
-            // new_path
-            // };
-            // let view = match field_type2.type_ {
-            // Type::Object(_) => {
-            // view! {
-            // <div>
-            // // <ObjectView
-            // //     schema=schema
-            // //     digest=v
-            // //     path=new_path
-            // //     selected=selected
-            // //     on_update=on_update.clone()
-            // // />
-            // </div>
-            // }
-            // }
-            // _ => {
-            // view! {
-            // <div>
-            // // <ValueView
-            // //     expected_type=field_type2.clone()
-            // //     value=v
-            // //     path=new_path
-            // //     selected=selected
-            // // />
-            // </div>
-            // }
-            // }
-            // };
-            // if more_than_one_field_value {
-            // view! {
-            // <div>
-            // <li>
-            // <div class="flex">
-            // // <button
-            // //     class="button"
-            // //     on:click=move |_| {
-            // //         value
-            // //             .update(|v| {
-            // //                 v.remove(i);
-            // //             });
-            // //     }
-            // // >
-            // //     x
-            // // </button>
-            // {view}
-            // </div>
-            // </li>
-            // </div>
-            // }
-            // } else {
-            // view! { <div>{view}</div> }
-            // }
-            // }
-            // />
-            // };
-            // let field_type2 = field_type.clone();
-            // view! {
-            // // a unique key for each item
-            // // renders each item to a view
+                                                    // let mut new_path = path5.clone();
 
-            // <li class="list-disc pl-2">
-            // {if more_than_one_field_value {
-            // view! {
-            // <div>
-            // <div class="inline-block">{field_type2.clone().name} :</div>
-            // <ol class="list-decimal" start=0>
-            // {all_field_values}
-            // </ol>
-            // </div>
-            // }
-            // } else {
-            // view! {
-            // <div>
-            // <div class="inline-block">{field_type2.clone().name} :</div>
-            // {all_field_values}
-            // </div>
-            // }
-            // }}
-            // {add_button}
-            // </li>
-            // }
-            // }
-            // />
+                                                    // let object_type = schema.get().object_types.get(&1).unwrap().clone();
+                                                    // let field_type = object_type.fields.get(&field_id).unwrap().clone();
+                                                    <ObjectView
+                                                        schema=schema
+                                                        digest=read_d
+                                                        path=new_path
+                                                        selected=selected
+                                                        on_action=on_action.clone()
+                                                        debug=debug
+                                                    />
+                                                }
+                                            }
+                                        />
+                                    }
+                                }
+                            />
+                        }
+                    }
 
-            // </ul>
+                </Show>
+
+                <Show when=move || {
+                    is_string.get()
+                }>
+
+                    {
+                        logging::log!("string value");
+                        let string_value = create_memo(move |_| match value.get() {
+                            Value::String(value) => value,
+                            _ => panic!("expected string value"),
+                        });
+                        view_string(string_value)
+                    }
+
+                </Show>
+
             </div>
         </div>
     }
