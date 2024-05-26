@@ -319,6 +319,7 @@ fn first_leaf(schema: &Schema, root_digest: &D, path: &Path) -> Option<Path> {
 }
 
 fn find_value(root_digest: &D, path: &Path) -> Option<D> {
+    logging::log!("find_value {:?} {:?}", root_digest.to_hex(), path);
     if path.is_empty() {
         return Some(root_digest.clone());
     } else {
@@ -330,9 +331,7 @@ fn find_value(root_digest: &D, path: &Path) -> Option<D> {
         let selector = path.first().unwrap();
         let field = object.fields.get(&selector.field_id).unwrap();
         let next_path = path[1..].to_vec();
-        let next_selector = next_path.first().unwrap();
-        let next_index = next_selector.index;
-        let next_digest = field.get(next_index).unwrap();
+        let next_digest = field.get(selector.index).unwrap();
         return find_value(&next_digest, &next_path);
     }
 }
@@ -402,6 +401,9 @@ enum Action {
         value: Value,
     },
     Delete {
+        path: Path,
+    },
+    SetFocus {
         path: Path,
     },
 }
@@ -491,6 +493,14 @@ fn App() -> impl IntoView {
     let (debug, _set_debug) = create_signal(false);
 
     let selected_path = create_rw_signal(Path::default());
+    let focus_path = create_rw_signal(Path::default());
+    let focused_digest = create_memo(move |_| {
+        let path = focus_path.get();
+        let digest = find_value(&get_root(), &path).unwrap();
+        logging::log!("focused_digest {:?}", digest);
+        digest
+    });
+    let focus_path_memo = create_memo(move |_| focus_path.get().clone());
 
     let (history, _set_history) = create_signal(Vec::<D>::new());
 
@@ -586,6 +596,9 @@ fn App() -> impl IntoView {
                 set_root(&new_d);
                 set_root_digest(new_d);
             }
+            Action::SetFocus { path } => {
+                focus_path.set(path);
+            }
         }
     };
 
@@ -594,11 +607,13 @@ fn App() -> impl IntoView {
             // <List/>
             <div>sel: {move || format_path(&selected_path.get())}</div>
             <div>root_digest: {move || root_digest.get().to_hex()}</div>
+            <div>focused: {move || format_path(&focus_path.get())}</div>
             <div>hist: {move || format!("{:?}", history.get())}</div>
             <ObjectView
                 schema=schema
-                digest=root_digest_memo
-                path=vec![]
+                digest=focused_digest
+                // TODO: Does not propagate correctly.
+                path=focus_path_memo
                 selected=selected_path
                 on_action=on_action
                 debug=debug
@@ -648,7 +663,7 @@ fn ObjectView(
     schema: ReadSignal<Schema>,
     digest: Memo<D>,
     #[prop(into)] on_action: Callback<Action>,
-    path: Path,
+    path: Memo<Path>,
     selected: RwSignal<Path>,
     debug: ReadSignal<bool>,
 ) -> impl IntoView {
@@ -663,7 +678,7 @@ fn ObjectView(
     let path6 = path.clone();
     let path7 = path.clone();
     let path8 = path.clone();
-    let s = create_memo(move |_| path1 == selected.get());
+    let s = create_memo(move |_| path.get() == selected.get());
     fn change_value() {}
     let view_object = move |id: Memo<ID>, v: Memo<ObjectValue>| -> HtmlElement<html::Div> {
         logging::log!("view_object {:?} {:?}", path2, v);
@@ -680,6 +695,7 @@ fn ObjectView(
         let v2 = v.clone();
         let v3 = v.clone();
         let path4 = path4.clone();
+        let path5 = path4.clone();
         let field_ids = move || {
             object_type()
                 .clone()
@@ -708,7 +724,17 @@ fn ObjectView(
                             ></path>
                         </svg>
                         <div class="">{move || object_type().name}</div>
-                        <button class="cursor-pointer" title="focus on this element">
+                        <button
+                            class="cursor-pointer"
+                            title="focus on this element"
+
+                            on:click=move |_| {
+                                on_action(Action::SetFocus {
+                                    path: path5.get(),
+                                })
+                            }
+                        >
+
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 fill="none"
@@ -783,21 +809,19 @@ fn ObjectView(
                                         });
                                         let field_type = field_type1.clone();
                                         let v3 = v3.clone();
-                                        let new_path = {
-                                            let mut new_path = path4.clone();
+                                        let new_path = create_memo(move |_| {
+                                            let mut new_path = path.get();
                                             new_path.push(Selector { field_id, index });
                                             new_path
-                                        };
-                                        let new_path_2 = new_path.clone();
-                                        let new_path_3 = new_path.clone();
+                                        });
                                         view! {
                                             <div class="mx-4 my-2 flex">
-                                                <Show when=move || debug()>{format_path(&new_path_2)}</Show>
+                                                <Show when=move || debug()>{format_path(&new_path.get())}</Show>
                                                 <div
                                                     class="cursor-pointer text-red"
                                                     on:click=move |_| {
                                                         on_action(Action::Delete {
-                                                            path: new_path_3.clone(),
+                                                            path: new_path.get(),
                                                         })
                                                     }
                                                 >
@@ -836,7 +860,7 @@ fn ObjectView(
                                     on:click=move |_| {
                                         let new_value = move || field_type().type_.default_value();
                                         on_action(Action::Append {
-                                            path: path5.clone(),
+                                            path: path.get(),
                                             field_id: field_id.clone(),
                                             position: Position::Last,
                                             value: new_value(),
@@ -879,7 +903,7 @@ fn ObjectView(
                     prop:value=move || { v.get() }
                     on:input=move |ev| {
                         let new_value = event_target_value(&ev);
-                        on_action(Action::Update(path3.clone(), Value::String(new_value)));
+                        on_action(Action::Update(path.get(), Value::String(new_value)));
                     }
                 />
 
@@ -920,7 +944,7 @@ fn ObjectView(
                 class:selected=s
                 on:click=move |ev| {
                     ev.stop_propagation();
-                    selected.set(path.clone());
+                    selected.set(path.get());
                 }
             >
 
