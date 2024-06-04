@@ -352,6 +352,9 @@ impl D {
     }
 
     pub fn from_hex(s: &str) -> Self {
+        if !s.starts_with("sha2-256:") {
+            return D::default();
+        }
         let sha2_256 = hex::decode(&s[9..]).unwrap();
         D {
             sha2_256: sha2_256.try_into().unwrap(),
@@ -530,8 +533,17 @@ fn App() -> impl IntoView {
     let root_digest_memo = create_memo(move |_| root_digest.get());
 
     create_effect(move |_| {
-        let d = get_root();
-        logging::log!("root {:?}", d);
+        let mut d = get_root();
+        logging::log!("raw root {:?}", d.to_hex());
+        if d.is_empty() {
+            let node = Node {
+                id: new_id(),
+                value: create_value(),
+            };
+            d = set_item(&node);
+            set_root(&d)
+        }
+        logging::log!("new root {:?}", d.to_hex());
         set_root_digest(d.clone());
         window()
             .location()
@@ -669,6 +681,7 @@ fn ObjectView(
 ) -> impl IntoView {
     logging::log!("rendering ObjectView {:?}", path);
     let node = create_memo(move |_| get_item_untracked(&digest.get()));
+    let is_present = create_memo(move |_| node.get().is_some());
     let value = create_memo(move |_| node.get().unwrap().value.clone());
     let path1 = path.clone();
     let path2 = path.clone();
@@ -816,7 +829,9 @@ fn ObjectView(
                                         });
                                         view! {
                                             <div class="mx-4 my-2 flex">
-                                                <Show when=move || debug()>{format_path(&new_path.get())}</Show>
+                                                <Show when=move || debug()>
+                                                    {format_path(&new_path.get())}
+                                                </Show>
                                                 <div
                                                     class="cursor-pointer text-red"
                                                     on:click=move |_| {
@@ -939,43 +954,45 @@ fn ObjectView(
                     {move || format!("{:?}", node.get().unwrap().value)}
                 </div>
             </Show>
-            <div
-                class=""
-                class:selected=s
-                on:click=move |ev| {
-                    ev.stop_propagation();
-                    selected.set(path.get());
-                }
-            >
-
-                <Show when=move || is_object()>
-
-                    {
-                        let object_value = create_memo(move |_| match value.get() {
-                            Value::Object(value) => value,
-                            _ => panic!("expected object value"),
-                        });
-                        let object_id = create_memo(move |_| object_value().object_type_id);
-                        view_object(object_id, object_value)
+            <Show when=move || is_present() fallback=|| view! { "not found" }>
+                <div
+                    class=""
+                    class:selected=s
+                    on:click=move |ev| {
+                        ev.stop_propagation();
+                        selected.set(path.get());
                     }
+                >
 
-                </Show>
+                    <Show when=move || is_object()>
 
-                <Show when=move || {
-                    is_string.get()
-                }>
+                        {
+                            let object_value = create_memo(move |_| match value.get() {
+                                Value::Object(value) => value,
+                                _ => panic!("expected object value"),
+                            });
+                            let object_id = create_memo(move |_| object_value().object_type_id);
+                            view_object(object_id, object_value)
+                        }
 
-                    {
-                        let string_value = create_memo(move |_| match value.get() {
-                            Value::String(value) => value,
-                            _ => panic!("expected string value"),
-                        });
-                        view_string(string_value)
-                    }
+                    </Show>
 
-                </Show>
+                    <Show when=move || {
+                        is_string.get()
+                    }>
 
-            </div>
+                        {
+                            let string_value = create_memo(move |_| match value.get() {
+                                Value::String(value) => value,
+                                _ => panic!("expected string value"),
+                            });
+                            view_string(string_value)
+                        }
+
+                    </Show>
+
+                </div>
+            </Show>
         </div>
     }
 }
