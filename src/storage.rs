@@ -93,3 +93,13 @@ pub fn get_root() -> D {
     logging::log!("root: {}", &hex);
     D::from_hex(&hex)
 }
+
+pub fn get_value(key: &str) -> Signal<String> {
+    let (value, _set_value, _) = use_local_storage::<String, FromToStringCodec>(key);
+    Signal::derive(move || value())
+}
+
+pub fn set_value(key: &str, value: &str) {
+    let (_value, set_value, _) = use_local_storage::<String, FromToStringCodec>(key);
+    set_value(value.to_string());
+}
