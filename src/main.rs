@@ -491,7 +491,7 @@ pub struct Cat {
     url: String,
 }
 
-async fn fetch_cats(count: usize) -> leptos::error::Result<Vec<String>> {
+async fn fetch_cats(api_key: String, count: usize) -> leptos::error::Result<Vec<String>> {
     // let s3_url = "https://257356f00011fbc800055e3864c471a6.r2.cloudflarestorage.com/lint";
     // let s3_url = "https://api.static.space/v1/upload";
     let s3_url = "http://localhost:8081/v1/upload";
@@ -499,6 +499,7 @@ async fn fetch_cats(count: usize) -> leptos::error::Result<Vec<String>> {
         // make the request
         let res = reqwasm::http::Request::post(&format!("{s3_url}"))
             .header("Content-Type", "application/json")
+            .header("bucket-key", &api_key)
             // .header(
             //     "Authorization",
             //     "AWS 15B4D3461F177624206A:xQE0diMbLRepdf3YB+FIc8F2Cy8=",
@@ -571,7 +572,7 @@ fn App() -> impl IntoView {
     let (root_digest, set_root_digest) = create_signal(d);
     let root_digest_memo = create_memo(move |_| root_digest.get());
 
-    let cats = create_local_resource(move || (), move |_| fetch_cats(2));
+    let cats = create_local_resource(move || (), move |_| fetch_cats(api_key.get(), 2));
 
     create_effect(move |_| {
         let v = storage::get_value("api_key").get();
@@ -713,16 +714,17 @@ fn App() -> impl IntoView {
                 Next
             </button>
 
-                <input
-                    class="border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 w-full"
-                    type="text"
-                    prop:value=move || { api_key.get() }
-                    on:input=move |ev| {
-                        let new_value = event_target_value(&ev);
-                        storage::set_value("api_key", &new_value);
-                        set_api_key(new_value);
-                    }
-                />
+            <input
+                class="border border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 w-full"
+                type="text"
+                prop:value=move || { api_key.get() }
+                on:input=move |ev| {
+                    let new_value = event_target_value(&ev);
+                    storage::set_value("api_key", &new_value);
+                    set_api_key(new_value);
+                }
+            />
+
         </div>
     }
 }
