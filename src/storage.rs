@@ -7,7 +7,6 @@ use leptos_use::{
     utils::FromToStringCodec,
 };
 use maplit::hashmap;
-use serde::Serialize;
 
 use crate::{HasDigest, Node, D};
 

@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 use core::panic;
 use leptos::*;
 use maplit::btreemap;
@@ -6,7 +8,6 @@ use sha2::Digest;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{self, Display, Formatter},
-    process::id,
     sync::Arc,
 };
 
@@ -491,7 +492,60 @@ pub struct Cat {
     url: String,
 }
 
-async fn fetch_cats(api_key: String, count: usize) -> leptos::error::Result<Vec<String>> {
+async fn upload_node(api_key: String, node: Node) -> anyhow::Result<()> {
+    let s3_url = "http://localhost:8081/v1/upload";
+    // let content = get_item(&digest).get_untracked().unwrap().serialize();
+    let content = node.serialize();
+    // logging::log!("uploading {:?}", digest.to_hex());
+    logging::log!("uploading {:?}", content);
+    let res = reqwasm::http::Request::post(&format!("{s3_url}"))
+        .header("Content-Type", "application/json")
+        .header("bucket-key", &api_key)
+        .body(content)
+        .send()
+        .await?;
+    logging::log!("upload res {:?}", res);
+    Ok(())
+}
+
+async fn upload(api_key: String, digest: D) -> leptos::error::Result<()> {
+    // traverse_async(digest, &|node| async move { logging::log!("---> traversing {:?}", node)}).await?;
+    // traverse_async(digest, &|node| async move { 
+    //     upload_node(api_key.clone(), node).await;
+    // }).await?;
+    traverse_async(digest, &|node: Node| async move { 
+        // upload_node(api_key.clone(), node.clone()).await;
+    }).await?;
+    // let s3_url = "http://localhost:8081/v1/upload";
+    // let content = get_item(&digest).get_untracked().unwrap().serialize();
+    // logging::log!("uploading {:?}", digest.to_hex());
+    // logging::log!("uploading {:?}", content);
+    // let res = reqwasm::http::Request::post(&format!("{s3_url}"))
+    //     .header("Content-Type", "application/json")
+    //     .header("bucket-key", &api_key)
+    //     .body(content)
+    //     .send()
+    //     .await?;
+    Ok(())
+}
+
+async fn traverse_async<F: async Fn(Node)>(digest: D, f : &F) -> leptos::error::Result<()> {
+    let node = get_item(&digest).get_untracked().unwrap();
+    f(node.clone()).await;
+    match node.value {
+        Value::Object(object) => {
+            for (field_id, field) in object.fields.iter() {
+                for child_digest in field {
+                    Box::pin(traverse_async(child_digest.clone(), f)).await?;
+                }
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+async fn fetch_cats(api_key: String, count: usize, set_response: WriteSignal<String>) -> leptos::error::Result<Vec<String>> {
     // let s3_url = "https://257356f00011fbc800055e3864c471a6.r2.cloudflarestorage.com/lint";
     // let s3_url = "https://api.static.space/v1/upload";
     let s3_url = "http://localhost:8081/v1/upload";
@@ -500,15 +554,13 @@ async fn fetch_cats(api_key: String, count: usize) -> leptos::error::Result<Vec<
         let res = reqwasm::http::Request::post(&format!("{s3_url}"))
             .header("Content-Type", "application/json")
             .header("bucket-key", &api_key)
-            // .header(
-            //     "Authorization",
-            //     "AWS 15B4D3461F177624206A:xQE0diMbLRepdf3YB+FIc8F2Cy8=",
-            // )
             .body(serde_json::to_string(&Cat {
                 url: "https://example.com".to_string(),
             })?)
             .send()
-            .await?
+            .await?;
+        set_response.set(res.text().await?  );
+        let res = res
             // convert it to JSON
             .json::<Vec<Cat>>()
             .await?
@@ -547,7 +599,7 @@ fn App() -> impl IntoView {
 
     let (history, _set_history) = create_signal(Vec::<D>::new());
 
-    let store = Arc::new(LocalStorage::<Node, D>::new());
+    let _store = Arc::new(LocalStorage::<Node, D>::new());
 
     let node = Node {
         id: 1,
@@ -564,15 +616,20 @@ fn App() -> impl IntoView {
     // });
     // logging::log!("node {:?}", store.get(&d));
 
-    let selected_element = create_memo(move |_| format_path(&selected_path.get()));
+    let _selected_element = create_memo(move |_| format_path(&selected_path.get()));
 
     // TODO: derived signals have different types.
     // let root_digest = Signal::derive(move || history.get().last().cloned().unwrap());
 
     let (root_digest, set_root_digest) = create_signal(d);
-    let root_digest_memo = create_memo(move |_| root_digest.get());
+    let _root_digest_memo = create_memo(move |_| root_digest.get());
 
-    let cats = create_local_resource(move || (), move |_| fetch_cats(api_key.get(), 2));
+    let (response, set_response) = create_signal("---".to_string());
+
+    // let upload = move || {
+    //     let cats = create_local_resource(move || (), move |_| fetch_cats(api_key.get(), 2, set_response));
+    //     logging::log!("cats {:?}", cats.get());
+    // };
 
     create_effect(move |_| {
         let v = storage::get_value("api_key").get();
@@ -704,6 +761,7 @@ fn App() -> impl IntoView {
 
                 Prev
             </button>
+
             <button
                 class="button"
                 on:click=move |_| {
@@ -712,6 +770,17 @@ fn App() -> impl IntoView {
             >
 
                 Next
+            </button>
+
+            <button
+                class="button"
+                on:click=move |_| {
+                    // upload();
+                    spawn_local_with_current_owner(async move { upload(api_key.get(), root_digest.get()).await; });
+                }
+            >
+
+                Upload
             </button>
 
             <input
@@ -724,6 +793,7 @@ fn App() -> impl IntoView {
                     set_api_key(new_value);
                 }
             />
+            <div>{move || response.get()}</div>
 
         </div>
     }
@@ -742,17 +812,17 @@ fn ObjectView(
     let node = create_memo(move |_| get_item_untracked(&digest.get()));
     let is_present = create_memo(move |_| node.get().is_some());
     let value = create_memo(move |_| node.get().unwrap().value.clone());
-    let path1 = path.clone();
+    let _path1 = path.clone();
     let path2 = path.clone();
     let path3 = path.clone();
     let path4 = path.clone();
-    let path5 = path.clone();
-    let path6 = path.clone();
-    let path7 = path.clone();
-    let path8 = path.clone();
+    let _path5 = path.clone();
+    let _path6 = path.clone();
+    let _path7 = path.clone();
+    let _path8 = path.clone();
     let s = create_memo(move |_| path.get() == selected.get());
     fn change_value() {}
-    let view_object = move |id: Memo<ID>, v: Memo<ObjectValue>| -> HtmlElement<html::Div> {
+    let view_object = move |_id: Memo<ID>, v: Memo<ObjectValue>| -> HtmlElement<html::Div> {
         logging::log!("view_object {:?} {:?}", path2, v);
         let object_type = move || {
             schema
@@ -763,8 +833,8 @@ fn ObjectView(
                 .clone()
         };
         let v = v.clone();
-        let v1 = v.clone();
-        let v2 = v.clone();
+        let _v1 = v.clone();
+        let _v2 = v.clone();
         let v3 = v.clone();
         let path4 = path4.clone();
         let path5 = path4.clone();
@@ -846,7 +916,7 @@ fn ObjectView(
                         let field_type = field_type.clone();
                         let field_type1 = field_type.clone();
                         let path4 = path4.clone();
-                        let path5 = path4.clone();
+                        let _path5 = path4.clone();
                         view! {
                             // logging::log!("for field_id {:?}", field_id);
                             // let v1 = v.clone();
@@ -879,8 +949,8 @@ fn ObjectView(
                                                 .unwrap_or_default()[index]
                                                 .clone()
                                         });
-                                        let field_type = field_type1.clone();
-                                        let v3 = v3.clone();
+                                        let _field_type = field_type1.clone();
+                                        let _v3 = v3.clone();
                                         let new_path = create_memo(move |_| {
                                             let mut new_path = path.get();
                                             new_path.push(Selector { field_id, index });
@@ -968,7 +1038,7 @@ fn ObjectView(
     };
     let view_string = move |v: Memo<String>| -> HtmlElement<html::Div> {
         // let vv = v.to_string();
-        let path3 = path3.clone();
+        let _path3 = path3.clone();
         view! {
             <div class="w-full">
                 <input
@@ -992,7 +1062,7 @@ fn ObjectView(
         Value::String(_) => true,
         _ => false,
     });
-    let object_type_memo = create_memo(move |_| {
+    let _object_type_memo = create_memo(move |_| {
         logging::log!("object_type_memo {:?}", value.get());
         let object_value = match value.get() {
             Value::Object(value) => value,
