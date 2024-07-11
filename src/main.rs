@@ -534,11 +534,13 @@ async fn upload(api_key: String, digest: D) -> leptos::error::Result<()> {
     Ok(())
 }
 
+// const STATIC_SPACE_URL: &str = "http://localhost:8081/v1/raw/";
+const STATIC_SPACE_API_URL: &str = "https://api.static.space";
+
 async fn download(digest: D) -> leptos::error::Result<()> {
     logging::log!("downloading {:?}", digest.to_hex());
-    let static_space_url = "http://localhost:8081/v1/raw/";
     let digest_hex = digest.to_hex();
-    let res = reqwasm::http::Request::get(&format!("{static_space_url}{digest_hex}"))
+    let res = reqwasm::http::Request::get(&format!("{STATIC_SPACE_API_URL}/v1/raw/{digest_hex}"))
         .send()
         .await?;
     logging::log!("download res {:?}", res);
