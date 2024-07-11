@@ -859,7 +859,7 @@ fn ObjectView(
     #[prop(into)] queue_fetch: Callback<D>,
 ) -> impl IntoView {
     logging::log!("rendering ObjectView {:?}", path);
-    let node = create_memo(move |_| get_item_untracked(&digest.get()));
+    let node = create_memo(move |_| get_item(&digest.get()).get());
     let is_present = create_memo(move |_| node.get().is_some());
     let value = create_memo(move |_| node.get().unwrap().value.clone());
     let _path1 = path.clone();
