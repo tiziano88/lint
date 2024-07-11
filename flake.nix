@@ -36,7 +36,7 @@
               pkgs.tailwindcss
               pkgs.wrangler
               # pkgs.nodePackages.daisyui
-              (pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
+              (pkgs.rust-bin.nightly."2024-02-01".default.override {
                 extensions = [
                   "clippy"
                   "llvm-tools-preview"
@@ -49,7 +49,7 @@
                   "x86_64-unknown-linux-musl"
                   "x86_64-unknown-linux-gnu"
                 ];
-              }))
+              })
             ];
           };
       }

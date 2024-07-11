@@ -1,4 +1,5 @@
 #![feature(async_closure)]
+#![feature(async_fn_traits)]
 
 use core::panic;
 use leptos::*;
@@ -492,7 +493,7 @@ pub struct Cat {
     url: String,
 }
 
-async fn upload_node(api_key: String, node: Node) -> anyhow::Result<()> {
+async fn upload_node(api_key: &str, node: Node) -> anyhow::Result<()> {
     let s3_url = "http://localhost:8081/v1/upload";
     // let content = get_item(&digest).get_untracked().unwrap().serialize();
     let content = node.serialize();
@@ -513,9 +514,13 @@ async fn upload(api_key: String, digest: D) -> leptos::error::Result<()> {
     // traverse_async(digest, &|node| async move { 
     //     upload_node(api_key.clone(), node).await;
     // }).await?;
-    traverse_async(digest, &|node: Node| async move { 
-        // upload_node(api_key.clone(), node.clone()).await;
-    }).await?;
+    // let api_key_arc = Arc::new(api_key);
+    traverse_async(digest, move |node: Node| {
+        let api_key = api_key.clone();
+      async move { 
+        upload_node(&api_key.clone(), node.clone()).await;
+    }
+}).await?;
     // let s3_url = "http://localhost:8081/v1/upload";
     // let content = get_item(&digest).get_untracked().unwrap().serialize();
     // logging::log!("uploading {:?}", digest.to_hex());
@@ -529,14 +534,31 @@ async fn upload(api_key: String, digest: D) -> leptos::error::Result<()> {
     Ok(())
 }
 
-async fn traverse_async<F: async Fn(Node)>(digest: D, f : &F) -> leptos::error::Result<()> {
+async fn download(digest: D) -> leptos::error::Result<()> {
+    logging::log!("downloading {:?}", digest.to_hex());
+    let static_space_url = "http://localhost:8081/v1/raw/";
+    let digest_hex = digest.to_hex();
+    let res = reqwasm::http::Request::get(&format!("{static_space_url}{digest_hex}"))
+        .send()
+        .await?;
+    logging::log!("download res {:?}", res);
+    let body = res.text().await?;
+    // parse node
+    let node = Node::deserialize(&body).unwrap();
+    logging::log!("node {:?}", node);
+    let d = set_item(&node);
+    logging::log!("new digest {:?}", d.to_hex());
+    Ok(())
+}
+
+async fn traverse_async<F: std::ops::AsyncFn(Node) + Clone>(digest: D, f : F) -> leptos::error::Result<()> {
     let node = get_item(&digest).get_untracked().unwrap();
-    f(node.clone()).await;
+    f.clone()(node.clone()).await;
     match node.value {
         Value::Object(object) => {
             for (field_id, field) in object.fields.iter() {
                 for child_digest in field {
-                    Box::pin(traverse_async(child_digest.clone(), f)).await?;
+                    Box::pin(traverse_async(child_digest.clone(), f.clone())).await?;
                 }
             }
         }
@@ -581,6 +603,8 @@ fn App() -> impl IntoView {
     let (schema, _set_schema) = create_signal(create_schema());
 
     let (api_key, set_api_key) = create_signal("api-key".to_string());
+
+    let (fetch_queue, set_fetch_queue) = create_signal(Vec::<D>::new());
 
     let value = create_rw_signal(create_value());
     let _root_type = Type::Object(schema.get_untracked().root_object_type_id);
@@ -637,6 +661,16 @@ fn App() -> impl IntoView {
     });
 
     create_effect(move |_| {
+        // First try to read from the hash.
+        let hash = window().location().hash().unwrap();
+        if hash.len() > 1 {
+            let d = D::from_hex(&hash[1..]);
+            logging::log!("hash {:?}", hash);
+            logging::log!("raw root {:?}", d.to_hex());
+            if !d.is_empty() {
+                set_root(&d);
+            }
+        }
         let mut d = get_root();
         logging::log!("raw root {:?}", d.to_hex());
         if d.is_empty() {
@@ -718,6 +752,16 @@ fn App() -> impl IntoView {
         }
     };
 
+    let queue_fetch = move |digest: D| {
+        logging::log!("queue_fetch {:?}", digest.to_hex());
+        // set_fetch_queue.update(|queue| {
+        //     queue.push(digest);
+        // });
+        spawn_local_with_current_owner(async move {
+            download(digest).await;
+        });
+    };
+
     view! {
         <div class="">
             // <List/>
@@ -733,6 +777,7 @@ fn App() -> impl IntoView {
                 selected=selected_path
                 on_action=on_action
                 debug=debug
+                queue_fetch=queue_fetch
             />
             <button
                 class="button"
@@ -775,8 +820,9 @@ fn App() -> impl IntoView {
             <button
                 class="button"
                 on:click=move |_| {
-                    // upload();
-                    spawn_local_with_current_owner(async move { upload(api_key.get(), root_digest.get()).await; });
+                    spawn_local_with_current_owner(async move {
+                        upload(api_key.get(), root_digest.get()).await;
+                    });
                 }
             >
 
@@ -793,7 +839,10 @@ fn App() -> impl IntoView {
                     set_api_key(new_value);
                 }
             />
+
             <div>{move || response.get()}</div>
+            <div>"fetch queue:"// { move || fetch_queue.get() }
+            </div>
 
         </div>
     }
@@ -807,6 +856,7 @@ fn ObjectView(
     path: Memo<Path>,
     selected: RwSignal<Path>,
     debug: ReadSignal<bool>,
+    #[prop(into)] queue_fetch: Callback<D>,
 ) -> impl IntoView {
     logging::log!("rendering ObjectView {:?}", path);
     let node = create_memo(move |_| get_item_untracked(&digest.get()));
@@ -993,6 +1043,7 @@ fn ObjectView(
                                                         selected=selected
                                                         on_action=on_action.clone()
                                                         debug=debug
+                                                        queue_fetch=queue_fetch
                                                     />
                                                 </div>
                                             </div>
@@ -1083,7 +1134,14 @@ fn ObjectView(
                     {move || format!("{:?}", node.get().unwrap().value)}
                 </div>
             </Show>
-            <Show when=move || is_present() fallback=|| view! { "not found" }>
+            <Show
+                when=move || is_present()
+                fallback=move || {
+                    queue_fetch(digest.get());
+                    view! { <div>"[" {move || digest.get().to_hex()} "]" "not found"</div> }
+                }
+            >
+
                 <div
                     class=""
                     class:selected=s
