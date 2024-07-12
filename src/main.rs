@@ -203,7 +203,7 @@ fn parent(schema: &Schema, root_value: &Value, path: &Path) -> Path {
 // Traverse the value to find the child at the given path.
 #[allow(unused)]
 fn child(schema: &Schema, root_value: &Value, path: &Path) -> Path {
-    todo!()
+      todo!()
     // let value = find_value(root_value, path).unwrap();
     // let mut path = path.clone();
     // match value {
@@ -510,31 +510,15 @@ async fn upload_node(api_key: &str, node: Node) -> anyhow::Result<()> {
 }
 
 async fn upload(api_key: String, digest: D) -> leptos::error::Result<()> {
-    // traverse_async(digest, &|node| async move { logging::log!("---> traversing {:?}", node)}).await?;
-    // traverse_async(digest, &|node| async move { 
-    //     upload_node(api_key.clone(), node).await;
-    // }).await?;
-    // let api_key_arc = Arc::new(api_key);
     traverse_async(digest, move |node: Node| {
         let api_key = api_key.clone();
       async move { 
-        upload_node(&api_key.clone(), node.clone()).await;
+        upload_node(&api_key.clone(), node.clone()).await.unwrap();
     }
 }).await?;
-    // let s3_url = "http://localhost:8081/v1/upload";
-    // let content = get_item(&digest).get_untracked().unwrap().serialize();
-    // logging::log!("uploading {:?}", digest.to_hex());
-    // logging::log!("uploading {:?}", content);
-    // let res = reqwasm::http::Request::post(&format!("{s3_url}"))
-    //     .header("Content-Type", "application/json")
-    //     .header("bucket-key", &api_key)
-    //     .body(content)
-    //     .send()
-    //     .await?;
     Ok(())
 }
 
-// const STATIC_SPACE_URL: &str = "http://localhost:8081/v1/raw/";
 const STATIC_SPACE_API_URL: &str = "https://api.static.space";
 
 async fn download(digest: D) -> leptos::error::Result<()> {
@@ -567,36 +551,6 @@ async fn traverse_async<F: std::ops::AsyncFn(Node) + Clone>(digest: D, f : F) ->
         _ => {}
     }
     Ok(())
-}
-
-async fn fetch_cats(api_key: String, count: usize, set_response: WriteSignal<String>) -> leptos::error::Result<Vec<String>> {
-    // let s3_url = "https://257356f00011fbc800055e3864c471a6.r2.cloudflarestorage.com/lint";
-    // let s3_url = "https://api.static.space/v1/upload";
-    let s3_url = "http://localhost:8081/v1/upload";
-    if count > 0 {
-        // make the request
-        let res = reqwasm::http::Request::post(&format!("{s3_url}"))
-            .header("Content-Type", "application/json")
-            .header("bucket-key", &api_key)
-            .body(serde_json::to_string(&Cat {
-                url: "https://example.com".to_string(),
-            })?)
-            .send()
-            .await?;
-        set_response.set(res.text().await?  );
-        let res = res
-            // convert it to JSON
-            .json::<Vec<Cat>>()
-            .await?
-            // extract the URL field for each cat
-            .into_iter()
-            .take(count)
-            .map(|cat| cat.url)
-            .collect::<Vec<_>>();
-        Ok(res)
-    } else {
-        panic!("count must be greater than 0")
-    }
 }
 
 #[component]
@@ -633,15 +587,6 @@ fn App() -> impl IntoView {
     };
     let d = set_item(&node);
 
-    // let storage = window().local_storage().unwrap().unwrap();
-    // storage.set_item("c", "v").unwrap();
-    // logging::log!("storage {}", storage.get_item("c").unwrap().unwrap());
-    // let d = store.put(Node {
-    //     id: 1,
-    //     value: value.get_untracked(),
-    // });
-    // logging::log!("node {:?}", store.get(&d));
-
     let _selected_element = create_memo(move |_| format_path(&selected_path.get()));
 
     // TODO: derived signals have different types.
@@ -651,11 +596,6 @@ fn App() -> impl IntoView {
     let _root_digest_memo = create_memo(move |_| root_digest.get());
 
     let (response, set_response) = create_signal("---".to_string());
-
-    // let upload = move || {
-    //     let cats = create_local_resource(move || (), move |_| fetch_cats(api_key.get(), 2, set_response));
-    //     logging::log!("cats {:?}", cats.get());
-    // };
 
     create_effect(move |_| {
         let v = storage::get_value("api_key").get();
@@ -695,14 +635,6 @@ fn App() -> impl IntoView {
             .replace(format!("/#{}", d.to_hex()).as_str())
             .expect("failed to replace location");
     });
-    // create_effect(move |_| {
-    //     let hash = window().location().hash().unwrap();
-    //     if hash.len() > 1 {
-    //         let d = D::from_hex(&hash[1..]);
-    //         logging::log!("hash {:?}", d.to_hex());
-    //         set_root_digest(d);
-    //     }
-    // });
 
     let on_action = move |action| {
         logging::log!("action {:?}", action);
@@ -765,8 +697,8 @@ fn App() -> impl IntoView {
         //     queue.push(digest);
         // });
         spawn_local_with_current_owner(async move {
-            download(digest).await;
-        });
+            download(digest).await.unwrap();
+        }).unwrap();
     };
 
     view! {
@@ -828,8 +760,9 @@ fn App() -> impl IntoView {
                 class="button"
                 on:click=move |_| {
                     spawn_local_with_current_owner(async move {
-                        upload(api_key.get(), root_digest.get()).await;
-                    });
+                            upload(api_key.get(), root_digest.get()).await.unwrap();
+                        })
+                        .unwrap();
                 }
             >
 
@@ -848,8 +781,8 @@ fn App() -> impl IntoView {
             />
 
             <div>{move || response.get()}</div>
-            <div>"fetch queue:"// { move || fetch_queue.get() }
-            </div>
+            // { move || fetch_queue.get() }
+            <div>"fetch queue:"</div>
 
         </div>
     }
@@ -953,12 +886,6 @@ fn ObjectView(
                 </div>
                 // Iterate over the fields of the object type.
                 <For
-                    // each=move || object_type.fields.clone().into_iter()
-                    // each=move || vec![(0, FieldType {
-                    // name: "name".to_string(),
-                    // type_: Type::String,
-                    // repeated: false,
-                    // })]
                     each=move || field_ids()
                     // a unique key for each item
                     key=|field_id| *field_id
@@ -975,17 +902,6 @@ fn ObjectView(
                         let path4 = path4.clone();
                         let _path5 = path4.clone();
                         view! {
-                            // logging::log!("for field_id {:?}", field_id);
-                            // let v1 = v.clone();
-                            // let v2 = v2.clone();
-                            // let fields2 = v.fields.clone();
-                            // let it: Vec<(usize, D)> = fields
-                            // .get(&field_id)
-                            // .cloned()
-                            // .unwrap_or_default()
-                            // .into_iter()
-                            // .enumerate()
-                            // .collect();
                             <div class="p-2">
                                 {move || field_type().name}
                                 <Show when=move || debug()>"(#" {field_id} ")"</Show>
