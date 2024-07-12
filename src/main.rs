@@ -663,6 +663,7 @@ fn App() -> impl IntoView {
     });
 
     create_effect(move |_| {
+        logging::log!("effect1");
         // First try to read from the hash.
         let hash = window().location().hash().unwrap();
         if hash.len() > 1 {
@@ -673,6 +674,10 @@ fn App() -> impl IntoView {
                 set_root(&d);
             }
         }
+    });
+
+    create_effect(move |_| {
+        logging::log!("effect2");
         let mut d = get_root();
         logging::log!("raw root {:?}", d.to_hex());
         if d.is_empty() {
