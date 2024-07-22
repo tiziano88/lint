@@ -393,6 +393,110 @@ pub fn create_schema() -> Schema {
                     },
                 },
             },
+            298732 => ObjectType {
+                name: "FlatArticle".to_string(),
+                fields: btreemap! {
+                    37438 => FieldType {
+                        name: "blocks".to_string(),
+                        type_: Type::Object(28398),
+                        repeated: true,
+                    },
+                },
+            },
+            28398 => ObjectType {
+                name: "FlatArticleBlock".to_string(),
+                fields: btreemap! {
+                    29382 => FieldType {
+                        name: "h1".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    129382 => FieldType {
+                        name: "h2".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    093483 => FieldType {
+                        name: "h3".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    238239 => FieldType {
+                        name: "paragrah".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    9834734 => FieldType {
+                        name: "quote".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    389734 => FieldType {
+                        name: "code".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    834734 => FieldType {
+                        name: "ordered list".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                    756347 => FieldType {
+                        name: "unordered list".to_string(),
+                        type_: Type::String,
+                        repeated: true,
+                    },
+                },
+            },
+
+            9823923 => ObjectType {
+                name: "TreeArticle".to_string(),
+                fields: btreemap! {
+                    34837 => FieldType {
+                        name: "sections".to_string(),
+                        type_: Type::Object(8734289),
+                        repeated: false,
+                    },
+                },
+            },
+
+            8734289 => ObjectType {
+                name: "TreeArticleSection".to_string(),
+                fields: btreemap! {
+                    21837 => FieldType {
+                        name: "title".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    298734 => FieldType {
+                        name: "blocks".to_string(),
+                        type_: Type::Object(93847373),
+                        repeated: true,
+                    },
+                },
+            },
+
+            93847373 => ObjectType {
+                name: "TreeArticleBlock".to_string(),
+                fields: btreemap! {
+                    387439 => FieldType {
+                        name: "text".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    38743 => FieldType {
+                        name: "quote".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                    39843 => FieldType {
+                        name: "code".to_string(),
+                        type_: Type::String,
+                        repeated: false,
+                    },
+                },
+            },
+
             2325 => ObjectType {
                 name: "Post".to_string(),
                 fields: btreemap! {
@@ -424,6 +528,16 @@ pub fn create_schema() -> Schema {
                     2287312 => FieldType {
                         name: "docker".to_string(),
                         type_: Type::Object(213792873),
+                        repeated: false,
+                    },
+                    329873 => FieldType {
+                        name: "flat_article".to_string(),
+                        type_: Type::Object(298732),
+                        repeated: false,
+                    },
+                    734837 => FieldType {
+                        name: "tree_article".to_string(),
+                        type_: Type::Object(9823923),
                         repeated: false,
                     },
                 },
