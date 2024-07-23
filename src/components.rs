@@ -29,15 +29,6 @@ pub fn App() -> impl IntoView {
 
     let (debug, _set_debug) = create_signal(false);
 
-    let selected_path = create_rw_signal(Path::default());
-    let focus_path = create_rw_signal(Path::default());
-    let focused_digest = create_memo(move |_| {
-        let path = focus_path.get();
-        let digest = find_value(&get_root(), &path).unwrap();
-        logging::log!("focused_digest {:?}", digest.to_hex());
-        digest
-    });
-    let focus_path_memo = create_memo(move |_| focus_path.get().clone());
 
     let (history, _set_history) = create_signal(Vec::<D>::new());
 
@@ -49,13 +40,23 @@ pub fn App() -> impl IntoView {
     };
     let d = set_item(&node);
 
-    let _selected_element = create_memo(move |_| format_path(&selected_path.get()));
 
     // TODO: derived signals have different types.
     // let root_digest = Signal::derive(move || history.get().last().cloned().unwrap());
 
     let (root_digest, set_root_digest) = create_signal(d);
     let _root_digest_memo = create_memo(move |_| root_digest.get());
+
+    let selected_path = create_rw_signal(Path::default());
+    let focus_path = create_rw_signal(Path::default());
+    let focused_digest = create_memo(move |_| {
+        let path = focus_path.get();
+        let digest = find_value(&root_digest.get(), &path).unwrap();
+        logging::log!("focused_digest {:?}", digest.to_hex());
+        digest
+    });
+    let focus_path_memo = create_memo(move |_| focus_path.get().clone());
+    let _selected_element = create_memo(move |_| format_path(&selected_path.get()));
 
     let (response, set_response) = create_signal("---".to_string());
 
@@ -80,11 +81,8 @@ pub fn App() -> impl IntoView {
             };
             let d = set_item(&node);
             logging::log!("no root digest, creating empty root node: {:?}", d.to_hex());
-        window()
-            .location()
-            .replace(format!("/#{}", d.to_hex()).as_str())
-            .expect("failed to replace location");
         set_root_digest(d.clone());
+            set_root_digest_in_url_hash(&d);
         }
     });
 
@@ -115,8 +113,9 @@ pub fn App() -> impl IntoView {
             Action::Noop => {}
             Action::Update(path, value) => {
                 let new_d = update_node(&root_digest(), &path, value);
-                set_root(&new_d);
-                set_root_digest(new_d);
+                // set_root(&new_d);
+                set_root_digest(new_d.clone());
+                set_root_digest_in_url_hash(&new_d);
             }
             Action::Append {
                 path,
@@ -165,6 +164,10 @@ pub fn App() -> impl IntoView {
     };
 
     let queue_fetch = move |digest: D| {
+        if digest.is_empty() {
+            logging::log!("empty digest; ignoring");
+            return;
+        }
         logging::log!("queue_fetch {:?}", digest.to_hex());
         // set_fetch_queue.update(|queue| {
         //     queue.push(digest);
@@ -271,7 +274,7 @@ fn ObjectView(
     debug: ReadSignal<bool>,
     #[prop(into)] queue_fetch: Callback<D>,
 ) -> impl IntoView {
-    logging::log!("rendering ObjectView {:?}", path);
+    logging::log!("rendering ObjectView {:?}", path.get_untracked());
     let node = create_memo(move |_| get_item(&digest.get()).get());
     let is_present = create_memo(move |_| node.get().is_some());
     let value = create_memo(move |_| node.get().unwrap().value.clone());

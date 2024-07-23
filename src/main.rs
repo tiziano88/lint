@@ -495,6 +495,13 @@ pub struct Cat {
     url: String,
 }
 
+pub fn set_root_digest_in_url_hash(d: &D) {
+        window()
+            .location()
+            .replace(format!("/#{}", d.to_hex()).as_str())
+            .expect("failed to replace location");
+}
+
 async fn upload_node(api_key: &str, node: Node) -> anyhow::Result<()> {
     let s3_url = "http://localhost:8081/v1/upload";
     // let content = get_item(&digest).get_untracked().unwrap().serialize();
