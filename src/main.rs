@@ -503,7 +503,7 @@ pub fn set_root_digest_in_url_hash(d: &D) {
 }
 
 async fn upload_node(api_key: &str, node: Node) -> anyhow::Result<()> {
-    let s3_url = "http://localhost:8081/v1/upload";
+    let s3_url = "https://api.static.space/v1/upload";
     // let content = get_item(&digest).get_untracked().unwrap().serialize();
     let content = node.serialize();
     // logging::log!("uploading {:?}", digest.to_hex());

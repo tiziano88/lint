@@ -45,13 +45,13 @@ pub fn App() -> impl IntoView {
     // let root_digest = Signal::derive(move || history.get().last().cloned().unwrap());
 
     let (root_digest, set_root_digest) = create_signal(d);
-    let _root_digest_memo = create_memo(move |_| root_digest.get());
+    let root_digest_memo = create_memo(move |_| root_digest.get());
 
     let selected_path = create_rw_signal(Path::default());
     let focus_path = create_rw_signal(Path::default());
     let focused_digest = create_memo(move |_| {
         let path = focus_path.get();
-        let digest = find_value(&_root_digest_memo.get(), &path).unwrap();
+        let digest = find_value(&root_digest_memo.get(), &path).unwrap();
         logging::log!("focused_digest {:?}", digest.to_hex());
         digest
     });
@@ -181,7 +181,7 @@ pub fn App() -> impl IntoView {
         <div class="">
             // <List/>
             <div>sel: {move || format_path(&selected_path.get())}</div>
-            <div>root_digest: {move || root_digest.get().to_hex()}</div>
+            <div>root_digest: <Digest d=root_digest_memo /></div>
             <div>focused: {move || format_path(&focus_path.get())}</div>
             <div>hist: {move || format!("{:?}", history.get())}</div>
             <ObjectView
@@ -265,6 +265,13 @@ pub fn App() -> impl IntoView {
 }
 
 #[component]
+fn Digest(d: Memo<D>) -> impl IntoView {
+    view! {
+        <div class="border rounded p-1">{move || d.get().to_hex()}</div>
+    }
+}
+
+#[component]
 fn ObjectView(
     schema: ReadSignal<Schema>,
     digest: Memo<D>,
@@ -335,7 +342,6 @@ fn ObjectView(
                                 })
                             }
                         >
-
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 fill="none"
@@ -351,6 +357,7 @@ fn ObjectView(
                                 ></path>
                             </svg>
                         </button>
+                        <Digest d=digest />
                     </div>
                 </div>
                 // Iterate over the fields of the object type.
