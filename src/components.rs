@@ -51,7 +51,7 @@ pub fn App() -> impl IntoView {
     let focus_path = create_rw_signal(Path::default());
     let focused_digest = create_memo(move |_| {
         let path = focus_path.get();
-        let digest = find_value(&root_digest.get(), &path).unwrap();
+        let digest = find_value(&_root_digest_memo.get(), &path).unwrap();
         logging::log!("focused_digest {:?}", digest.to_hex());
         digest
     });
