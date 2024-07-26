@@ -284,7 +284,7 @@ fn ObjectView(
     let s = create_memo(move |_| path.get() == selected.get());
     fn change_value() {}
     let view_object = move |_id: Memo<ID>, v: Memo<ObjectValue>| -> HtmlElement<html::Div> {
-        logging::log!("view_object {:?} {:?}", path2.get(), v.get());
+        logging::log!("view_object {:?} {:?}", path2.get_untracked(), v.get_untracked());
         let object_type = move || {
             schema
                 .get()
